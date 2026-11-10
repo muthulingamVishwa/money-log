@@ -174,6 +174,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { min-height: 36px; padding: 6px 13px; border-radius: 999px; border: 1px solid var(--rule); background: transparent; cursor: pointer; font-size: 14px; }
 .chip:hover { border-color: var(--ink); }
+.chip-add { border-style: dashed; border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.chip-add:hover { border-color: var(--accent); background: var(--paper); }
+.cg-list { display: grid; margin-top: 18px; }
+.cg-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 2px; border-bottom: 1px solid var(--rule); }
+.cg-row:first-of-type { border-top: 1px solid var(--rule); margin-top: 8px; }
+.cg-row .btn { min-height: 34px; padding: 0 12px; font-size: 13px; }
 .chip[aria-pressed="true"], .chip[aria-checked="true"] { background: var(--ink); border-color: var(--ink); color: var(--sheet); }
 .chip .num { font-size: 13px; opacity: .75; margin-left: 2px; }
 
@@ -889,7 +895,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   /* =====================================================
      TRACKER
      ===================================================== */
-  var S = { uid: null, username: "", txns: [], accounts: [], budget: null, month: curYM(), filter: "all", acctFilter: "all", loaded: false, lastLoad: 0, pending: 0 };
+  var S = { uid: null, username: "", txns: [], accounts: [], cats: { expense: [], income: [] }, budget: null, month: curYM(), filter: "all", acctFilter: "all", loaded: false, lastLoad: 0, pending: 0 };
   var TX_COLS = "id,type,amount,category,method,note,date,created_at,account_id";
 
   function clean(row) {
@@ -907,6 +913,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
     return { id: String(row.id), name: String(row.name || "Account"), last4: l4, opening: isFinite(ob) ? ob : 0, createdAt: String(row.created_at || "") };
   }
   function acctLabel(a) { return a ? a.name + (a.last4 ? " \u2022\u2022" + a.last4 : "") : ""; }
+  /* Category tiles: built-in ones, then the person's own, then Other */
+  function catList(type) {
+    var base = (type === "income" ? INC : EXP).filter(function (c) { return c !== "Other"; });
+    var own = (S.cats[type] || []).map(function (c) { return c.name; }).filter(function (n) { return base.indexOf(n) < 0 && n !== "Other"; });
+    return base.concat(own, ["Other"]);
+  }
+  function cleanCat(row) {
+    if (!row || !row.id || (row.type !== "income" && row.type !== "expense")) return null;
+    var name = String(row.name || "").trim();
+    return name ? { id: String(row.id), type: row.type, name: name.slice(0, 40) } : null;
+  }
+  function setCats(rows) {
+    S.cats = { expense: [], income: [] };
+    (rows || []).map(cleanCat).filter(Boolean).forEach(function (c) { S.cats[c.type].push(c); });
+  }
   function acctById(id) { for (var i = 0; i < S.accounts.length; i++) if (S.accounts[i].id === id) return S.accounts[i]; return null; }
   function acctNet(id) {
     var n = 0;
@@ -952,7 +973,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
       var res = await Promise.all([
         sb.from("profiles").select("username,budget").eq("id", S.uid).maybeSingle(),
         fetchAllTx(),
-        sb.from("accounts").select("id,name,account_last4,opening_balance,created_at").order("created_at", { ascending: true })
+        sb.from("accounts").select("id,name,account_last4,opening_balance,created_at").order("created_at", { ascending: true }),
+        sb.from("categories").select("id,type,name").order("created_at", { ascending: true })
       ]);
       if (res[2].error) throw res[2].error;
       var prof = res[0].data;
@@ -961,6 +983,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
       S.budget = b > 0 ? b : null;
       S.txns = res[1];
       S.accounts = (res[2].data || []).map(cleanAcct).filter(Boolean);
+      setCats(res[3].error ? [] : res[3].data);
+      addF.redrawCats();
       if (S.acctFilter !== "all" && S.acctFilter !== "none" && !acctById(S.acctFilter)) S.acctFilter = "all";
       addF.refreshAccounts();
       S.loaded = true; S.lastLoad = Date.now();
@@ -976,7 +1000,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
     if (/access_token|error_description/.test(location.hash)) { try { history.replaceState(null, "", appUrl()); } catch (e) {} }
     S.uid = user.id;
     S.username = (user.user_metadata && user.user_metadata.username) || (user.email || "").split("@")[0];
-    S.txns = []; S.accounts = []; S.budget = null; S.month = curYM(); S.acctFilter = "all"; S.loaded = false;
+    S.txns = []; S.accounts = []; S.cats = { expense: [], income: [] }; S.budget = null; S.month = curYM(); S.acctFilter = "all"; S.loaded = false;
     addF.refreshAccounts();
     $("auth").hidden = true; $("app").hidden = false;
     $("user-name").textContent = showUser(S.username);
@@ -985,7 +1009,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
     loadData(false);
   }
   function resetApp() {
-    S.uid = null; S.txns = []; S.accounts = []; S.budget = null; S.loaded = false;
+    S.uid = null; S.txns = []; S.accounts = []; S.cats = { expense: [], income: [] }; S.budget = null; S.loaded = false;
     closeSheet(); $("app").hidden = true;
   }
   document.addEventListener("visibilitychange", function () {
@@ -1051,6 +1075,22 @@ button, input, select, textarea { font: inherit; color: inherit; }
       addF.refreshAccounts();
       render();
       return a;
+    });
+  }
+  function addCategory(type, name) {
+    return write(async function () {
+      var r = await sb.from("categories").insert({ type: type, name: name }).select("id,type,name").single();
+      if (r.error) throw r.error;
+      var c = cleanCat(r.data);
+      if (c) S.cats[c.type].push(c);
+      return c;
+    });
+  }
+  function deleteCategory(c) {
+    return write(async function () {
+      var r = await sb.from("categories").delete().eq("id", c.id);
+      if (r.error) throw r.error;
+      S.cats[c.type] = S.cats[c.type].filter(function (x) { return x.id !== c.id; });
     });
   }
   function deleteAccount(id) {
@@ -1127,15 +1167,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
     });
     function label() { return mode === "add" ? (type === "income" ? "Add income" : "Add expense") : "Save changes"; }
     function drawCats() {
-      var list = (type === "income" ? INC : EXP).slice();
+      var list = catList(type);
       if (cat && list.indexOf(cat) < 0) list.push(cat);
       cats.innerHTML = list.map(function (c) {
         return '<button type="button" class="chip" aria-pressed="' + (c === cat) + '" data-c="' + esc(c) + '">' + esc(c) + "</button>";
-      }).join("");
+      }).join("") + (mode === "add" ? '<button type="button" class="chip chip-add" data-add="1">+ Add</button>' : "");
     }
     function setType(t, userChange) {
       type = t === "income" ? "income" : "expense";
-      if (userChange && cat && (type === "income" ? INC : EXP).indexOf(cat) < 0) cat = null;
+      if (userChange && cat && catList(type).indexOf(cat) < 0) cat = null;
       f.dataset.type = type;
       f.querySelectorAll(".seg-btn").forEach(function (b) { b.setAttribute("aria-checked", String(b.dataset.type === type)); });
       via.textContent = type === "income" ? "Received via" : "Paid via";
@@ -1152,6 +1192,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
     });
     cats.addEventListener("click", function (e) {
       var b = e.target.closest(".chip"); if (!b) return;
+      if (b.dataset.add) {
+        openCategory(type, function (name) { cat = name; drawCats(); msg(out, ""); });
+        return;
+      }
       cat = b.dataset.c;
       cats.querySelectorAll(".chip").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
       msg(out, "");
@@ -1162,6 +1206,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
     return {
       el: f,
       refreshAccounts: function () { refreshAccounts(); },
+      redrawCats: function () { drawCats(); },
       showMsg: function (t, isErr) { msg(out, t, isErr ? "err" : ""); },
       setBusy: function (b) { save.disabled = b; save.textContent = b ? "Saving\u2026" : label(); },
       values: function () {
@@ -1446,6 +1491,56 @@ button, input, select, textarea { font: inherit; color: inherit; }
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
   });
+  function openCategory(type, onAdded) {
+    var word = type === "income" ? "Received" : "Spent";
+    function listHTML() {
+      var own = S.cats[type] || [];
+      if (!own.length) return "";
+      return '<div class="cg-list"><span class="field-label">Your ' + word + " categories</span>" + own.map(function (c) {
+        return '<div class="cg-row"><span>' + esc(c.name) + '</span><button type="button" class="btn ghost" data-del="' + esc(c.id) + '">Remove</button></div>';
+      }).join("") + '<p class="form-msg">Removing a category keeps your past entries as they are.</p></div>';
+    }
+    openSheet('<h3 class="sheet-title">New ' + word + " category</h3>" +
+      '<form id="cg-form" class="entry" novalidate>' +
+      '<label class="field" for="cg-name"><span>Category name</span>' +
+      '<input id="cg-name" maxlength="40" autocomplete="off" placeholder="' + (type === "income" ? "e.g. Rent received, Side project" : "e.g. Gym, Pets, Kids school") + '"></label>' +
+      '<p class="form-msg" id="cg-msg" role="status" aria-live="polite"></p>' +
+      '<div class="actions"><button class="btn primary" type="submit" id="cg-save">Add category</button>' +
+      '<button class="btn ghost" type="button" id="cg-cancel">Cancel</button></div></form>' +
+      '<div id="cg-own">' + listHTML() + "</div>", "New category");
+    var input = $("cg-name"), out = $("cg-msg"), save = $("cg-save");
+    input.focus({ preventScroll: true });
+    $("cg-cancel").addEventListener("click", closeSheet);
+    $("cg-form").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var name = input.value.trim().replace(/\s+/g, " ");
+      if (!name) return msg(out, "Type a name for the category.", "err");
+      if (name.length > 40) return msg(out, "Keep it under 40 characters.", "err");
+      var clash = catList(type).filter(function (c) { return c.toLowerCase() === name.toLowerCase(); })[0];
+      if (clash) { closeSheet(); onAdded(clash); toast(clash + " is already a category, so it's selected"); return; }
+      busy(save, true, "Adding\u2026");
+      try {
+        var c = await addCategory(type, name);
+        closeSheet();
+        addF.redrawCats();
+        onAdded(c ? c.name : name);
+        toast("Added " + name);
+      } catch (err) {
+        var m = String((err && err.message) || "");
+        msg(out, /relation|does not exist|schema cache/i.test(m) ? "Custom categories aren't set up in the database yet. Run the latest supabase-setup.sql." : dataErr(err), "err");
+        busy(save, false);
+      }
+    });
+    $("cg-own").addEventListener("click", async function (e) {
+      var b = e.target.closest("[data-del]"); if (!b) return;
+      if (!b.classList.contains("armed")) { b.classList.add("armed", "danger"); b.classList.remove("ghost"); b.textContent = "Tap to remove"; return; }
+      var c = (S.cats[type] || []).filter(function (x) { return x.id === b.dataset.del; })[0];
+      if (!c) return;
+      b.disabled = true;
+      try { await deleteCategory(c); $("cg-own").innerHTML = listHTML(); addF.redrawCats(); toast("Removed " + c.name); }
+      catch (err) { msg(out, dataErr(err), "err"); b.disabled = false; }
+    });
+  }
   function openAccount(id) {
     var a = id ? acctById(id) : null;
     var banks = BANKS.map(function (b) { return '<option value="' + esc(b) + '"></option>'; }).join("");
