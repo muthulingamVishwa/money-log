@@ -315,8 +315,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
     <form class="entry av" id="v-signup" novalidate hidden>
       <div class="field"><label for="su-user">Username</label>
-        <input id="su-user" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20">
-        <p class="hint-line" id="su-user-hint">3 to 20 characters: lowercase letters, numbers or _</p></div>
+        <input id="su-user" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="64" placeholder="Same as your email, or pick one">
+        <p class="hint-line" id="su-user-hint">Fills in from your email. You can change it.</p></div>
       <div class="field"><label for="su-email">Email</label>
         <input id="su-email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false"></div>
       <div class="field"><label for="su-pass">Password</label>
@@ -486,7 +486,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
     { label: "No spaces", test: function (p) { return p.length > 0 && !/\s/.test(p); } }
   ];
   var BANKS = ["Cash", "State Bank of India", "HDFC Bank", "ICICI Bank", "Axis Bank", "Kotak Mahindra Bank", "Indian Bank", "Indian Overseas Bank", "Canara Bank", "Bank of Baroda", "Punjab National Bank", "Union Bank of India", "IDFC FIRST Bank", "Yes Bank", "Federal Bank", "City Union Bank", "Karur Vysya Bank", "Tamilnad Mercantile Bank", "IndusInd Bank", "Paytm Payments Bank", "Credit card"];
-  var USER_RE = /^[a-z0-9_]{3,20}$/;
+  var USER_RE = /^[a-z0-9._@+\-]{3,64}$/;
+  function showUser(u) { return u.indexOf("@") >= 0 ? u : "@" + u; }
   var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
   function $(id) { return document.getElementById(id); }
@@ -654,15 +655,23 @@ button, input, select, textarea { font: inherit; color: inherit; }
   wireMatch("su-pass", "su-pass2", "su-match");
   wireMatch("rs-pass", "rs-pass2", "rs-match");
 
-  /* Username: lowercase as you type, check availability */
-  var userTimer, userSeq = 0, userOk = null;
-  $("su-user").addEventListener("input", function () {
+  /* Username: same as the email by default; lowercase as you type; check availability */
+  var userTimer, userSeq = 0, userOk = null, userAuto = true;
+  $("su-email").addEventListener("input", function () {
+    if (!userAuto) return;
+    var u = $("su-user");
+    u.value = this.value.trim().toLowerCase().slice(0, 64);
+    u.dispatchEvent(new Event("input"));
+    userAuto = true;
+  });
+  $("su-user").addEventListener("input", function (e) {
+    if (e.isTrusted) userAuto = !this.value;
     var el = this, v = el.value.toLowerCase().replace(/\s/g, "");
     if (v !== el.value) el.value = v;
     var hint = $("su-user-hint");
     userOk = null; clearTimeout(userTimer);
-    if (!v) { hint.textContent = "3 to 20 characters: lowercase letters, numbers or _"; hint.className = "hint-line"; return; }
-    if (!USER_RE.test(v)) { hint.textContent = "Use 3 to 20 lowercase letters, numbers or _"; hint.className = "hint-line bad"; return; }
+    if (!v) { hint.textContent = "Fills in from your email. You can change it."; hint.className = "hint-line"; return; }
+    if (!USER_RE.test(v)) { hint.textContent = "Use 3 to 64 characters: letters, numbers, or . _ - @ +"; hint.className = "hint-line bad"; return; }
     hint.textContent = "Checking\u2026"; hint.className = "hint-line";
     var seq = ++userSeq;
     userTimer = setTimeout(async function () {
@@ -670,7 +679,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
       if (seq !== userSeq) return;
       userOk = ok;
       if (ok === null) { hint.textContent = "Couldn't check right now. We'll check when you sign up."; hint.className = "hint-line"; }
-      else { hint.textContent = ok ? "@" + v + " is available" : "@" + v + " is taken"; hint.className = "hint-line " + (ok ? "ok" : "bad"); }
+      else { hint.textContent = ok ? showUser(v) + " is available" : showUser(v) + " is taken"; hint.className = "hint-line " + (ok ? "ok" : "bad"); }
     }, 400);
   });
   async function usernameFree(u) {
@@ -699,9 +708,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
   $("v-signup").addEventListener("submit", async function (e) {
     e.preventDefault();
     var out = $("su-msg"), btn = $("su-btn");
-    var user = $("su-user").value.trim().toLowerCase(), email = $("su-email").value.trim().toLowerCase();
+    var email = $("su-email").value.trim().toLowerCase(), user = ($("su-user").value.trim() || email).toLowerCase();
     var pw = $("su-pass").value, pw2 = $("su-pass2").value;
-    if (!USER_RE.test(user)) return msg(out, "Choose a username: 3 to 20 lowercase letters, numbers or _.", "err");
+    if (!USER_RE.test(user)) return msg(out, "Choose a username of 3 to 64 characters: letters, numbers, or . _ - @ +", "err");
     if (!EMAIL_RE.test(email)) return msg(out, "Enter a valid email address.", "err");
     var probs = pwProblems(pw);
     if (probs.length) { drawRules($("su-rules"), pw); return msg(out, "Your password still needs: " + probs.map(function (r) { return r.label.toLowerCase(); }).join(", ") + ".", "err"); }
@@ -709,7 +718,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
     msg(out, ""); busy(btn, true, "Creating account\u2026");
     try {
       var free = await usernameFree(user);
-      if (free === false) { msg(out, "@" + user + " is taken. Pick another username.", "err"); return; }
+      if (free === false) { msg(out, showUser(user) + " is already taken. Pick another username, or log in if this is your account.", "err"); return; }
       var r = await sb.auth.signUp({ email: email, password: pw, options: { data: { username: user }, emailRedirectTo: appUrl() } });
       if (r.error) { msg(out, authErr(r.error), "err"); return; }
       var u = r.data && r.data.user;
@@ -956,7 +965,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
       addF.refreshAccounts();
       S.loaded = true; S.lastLoad = Date.now();
       setStatus("ok"); showBanner("");
-      $("user-name").textContent = "@" + S.username;
+      $("user-name").textContent = showUser(S.username);
       render();
     } catch (e) {
       setStatus("error");
@@ -970,7 +979,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
     S.txns = []; S.accounts = []; S.budget = null; S.month = curYM(); S.acctFilter = "all"; S.loaded = false;
     addF.refreshAccounts();
     $("auth").hidden = true; $("app").hidden = false;
-    $("user-name").textContent = "@" + S.username;
+    $("user-name").textContent = showUser(S.username);
     window.scrollTo(0, 0);
     render();
     loadData(false);
