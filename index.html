@@ -299,6 +299,8 @@ section.card { scroll-margin-top: 64px; }
 .person .loan-row, .person .loan-row:first-child { border: 0; border-left: 2px solid var(--rule); padding: 6px 0 6px 12px; margin-top: 8px; }
 .person .row-name { font-weight: 500; font-size: 14px; }
 .left-k { font: 500 12px/1 var(--mono); color: var(--muted); }
+.person-act { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 4px; }
+.person-act .btn { flex: none; min-height: 34px; padding: 0 14px; font-size: 13px; }
 .loan-done-h { margin: 16px 0 0; font: 500 11px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .pay-list { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 12px; }
 .pay-h { font-size: 13px; font-weight: 600; }
@@ -1961,8 +1963,16 @@ section.card { scroll-margin-top: 64px; }
   }
   function loanKey(name) { return String(name).trim().toLowerCase().replace(/\s+/g, " "); }
   /* Same person typed as "ravi" and "Ravi": show the capitalised spelling */
-  function nicerName(cur, next) { return !cur || next !== next.toLowerCase() || cur === cur.toLowerCase() ? next : cur; }
-  function payJSON(list) { return list.map(function (p) { return { id: p.id, amount: p.amount, date: p.date, account_id: p.accountId }; }); }
+  function nameScore(n) { return n !== n.toLowerCase() && n !== n.toUpperCase() ? 2 : n !== n.toLowerCase() ? 1 : 0; }
+  function nicerName(cur, next) { return !cur || nameScore(next) > nameScore(cur) ? next : cur; }
+  function payJSON(list) { return list.map(function (p) { var o = { id: p.id, amount: p.amount, date: p.date, account_id: p.accountId }; if (p.offset) o.offset = true; return o; }); }
+  function newPayId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  /* Everyone you've lent to or borrowed from, one spelling each */
+  function loanPeople() {
+    var m = {};
+    S.loans.forEach(function (l) { var k = loanKey(l.person); m[k] = nicerName(m[k], l.person); });
+    return Object.keys(m).map(function (k) { return m[k]; }).sort(function (a, b) { return a.toLowerCase() < b.toLowerCase() ? -1 : 1; });
+  }
   function loanCols() { return S.loanPay === false ? LOAN_COLS_BASE : LOAN_COLS; }
   async function fetchLoans() {
     var r = await sb.from("loans").select(LOAN_COLS).order("date", { ascending: true });
@@ -1993,7 +2003,7 @@ section.card { scroll-margin-top: 64px; }
   }
   function cleanPay(p) {
     var a = Number(p && p.amount), d = isoOrNull(p && p.date);
-    return a > 0 && d ? { id: String(p.id || d + "-" + a), amount: a, date: d, accountId: p.account_id ? String(p.account_id) : null } : null;
+    return a > 0 && d ? { id: String(p.id || d + "-" + a), amount: a, date: d, accountId: p.offset ? null : p.account_id ? String(p.account_id) : null, offset: !!p.offset } : null;
   }
   function cleanGoal(r) {
     var t = Number(r && r.target), sv = Number(r && r.saved);
@@ -2330,7 +2340,9 @@ section.card { scroll-margin-top: 64px; }
       st = '<span class="pill ' + (d < 0 ? "late" : d <= 3 ? "soon" : "due") + '">' + (d < 0 ? "Overdue by " + -d + (d === -1 ? " day" : " days") : d === 0 ? "Due today" : "Due " + fmtDate(l.due)) + "</span>";
     } else st = '<span class="pill muted">No due date</span>';
     var title = (withName ? l.person + " · " : "") + (lent ? "Lent " : "Borrowed ") + inr(l.amount) + " · " + fmtDate(l.date);
-    var sub = [paid ? (lent ? "Got back " : "Paid back ") + inr(paid) + (l.payments.length > 1 ? " in " + l.payments.length + " parts" : "") : "", a ? acctLabel(a) : "", l.note].filter(Boolean).join(" · ");
+    var offAmt = round2(l.payments.reduce(function (s2, p) { return s2 + (p.offset ? p.amount : 0); }, 0)), cashAmt = round2(paid - offAmt),
+        cashN = l.payments.filter(function (p) { return !p.offset; }).length;
+    var sub = [cashAmt > 0 ? (lent ? "Got back " : "Paid back ") + inr(cashAmt) + (cashN > 1 ? " in " + cashN + " parts" : "") : "", offAmt > 0 ? "Set off " + inr(offAmt) : "", a ? acctLabel(a) : "", l.note].filter(Boolean).join(" · ");
     var right = done ? '<span class="amt">' + inr(l.amount) + "</span>"
       : '<span class="amt ' + (lent ? "income" : "expense") + '">' + inr(left) + (paid ? '<span class="left-k"> left</span>' : "") + "</span>";
     return '<div class="loan-row' + (done ? " settled" : "") + '"><div class="row-top"><button class="row-name" type="button" data-loan="' + esc(l.id) + '">' + esc(title) + "</button>" + right + "</div>" +
@@ -2369,6 +2381,7 @@ section.card { scroll-margin-top: 64px; }
         : '<span class="k">Even</span><span class="amt">' + inr(0) + "</span>";
       var mix = g.get && g.give ? '<span class="row-sub">' + esc("You get " + inr(g.get) + " · you owe " + inr(g.give)) + "</span>" : "";
       g.items.sort(function (x, y) { var X = x.due || "9999", Y = y.due || "9999"; return X < Y ? -1 : X > Y ? 1 : x.date < y.date ? -1 : 1; });
+      if (g.items.length > 1) mix = '<div class="person-act">' + (mix || "<span></span>") + '<button class="btn ghost" type="button" data-person="' + esc(k) + '">Settle up</button></div>';
       return '<div class="person"><div class="person-head"><span class="person-name">' + esc(g.name) + '</span><span class="person-net">' + head + "</span></div>" + mix +
         g.items.map(function (l) { return loanItemHTML(l, today, false); }).join("") + "</div>";
     }).join("");
@@ -2377,6 +2390,79 @@ section.card { scroll-margin-top: 64px; }
         .map(function (l) { return loanItemHTML(l, today, true); }).join("") + "</div>";
     }
     $("loan-list").innerHTML = html;
+  }
+  /* Settle up with one person: what you borrowed from them is set against what they owe you
+     (no money moves for that part), then the cash paid goes to the oldest entries first */
+  function personPlan(items, cash, d, acct) {
+    var byDate = function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.createdAt < b.createdAt ? -1 : 1; };
+    var lent = items.filter(function (l) { return l.direction === "lent"; }).sort(byDate),
+        borr = items.filter(function (l) { return l.direction === "borrowed"; }).sort(byDate);
+    var G = round2(lent.reduce(function (s, l) { return s + loanLeft(l); }, 0)), B = round2(borr.reduce(function (s, l) { return s + loanLeft(l); }, 0));
+    var off = Math.min(G, B), adds = {}, taken = {};
+    function apply(list, amt, isOff) {
+      list.forEach(function (l) {
+        if (amt <= 0.004) return;
+        var room = round2(loanLeft(l) - (taken[l.id] || 0)), take = round2(Math.min(room, amt));
+        if (take <= 0.004) return;
+        (adds[l.id] = adds[l.id] || []).push(isOff ? { id: newPayId(), amount: take, date: d, accountId: null, offset: true } : { id: newPayId(), amount: take, date: d, accountId: acct || null, offset: false });
+        taken[l.id] = round2((taken[l.id] || 0) + take); amt = round2(amt - take);
+      });
+    }
+    apply(borr, off, true); apply(lent, off, true);
+    if (cash > 0) apply(G > B ? lent : borr, cash, false);
+    return { adds: adds, taken: taken, off: off, G: G, B: B, net: round2(G - B) };
+  }
+  function openPersonPay(key) {
+    var items = S.loans.filter(function (l) { return !loanDone(l) && loanKey(l.person) === key; });
+    if (!items.length) return;
+    var name = items.reduce(function (n, l) { return nicerName(n, l.person); }, ""), plan0 = personPlan(items, 0, todayISO(), null), net = plan0.net, abs = Math.abs(net);
+    var head = net > 0 ? name + " owes you " + inr(net) : net < 0 ? "You owe " + name + " " + inr(-net) : "You and " + name + " are even";
+    openSheet('<h3 class="sheet-title">Settle up with ' + esc(name) + "</h3>" +
+      '<form id="pp-form" class="entry" novalidate data-type="' + (net >= 0 ? "income" : "expense") + '">' +
+      '<p class="b-text">' + (plan0.G && plan0.B ? esc("Still open: " + inr(plan0.G) + " to get · " + inr(plan0.B) + " to give") + "<br>" : "") + '<strong class="num">' + esc(head) + "</strong></p>" +
+      (plan0.off > 0 ? '<p class="form-msg">' + esc(inr(plan0.off) + " you borrowed is set against what " + name + " owes, so only the difference changes hands.") + "</p>" : "") +
+      (abs > 0 ? '<label class="amount" for="pp-amt"><span class="rupee" aria-hidden="true">₹</span><input id="pp-amt" inputmode="decimal" autocomplete="off" aria-label="Amount in rupees" value="' + esc(String(abs)) + '"></label>' +
+        '<p class="form-msg" id="pp-left">' + esc(net > 0 ? "How much did " + name + " give you? Change it if only part came." : "How much are you paying " + name + "?") + "</p>" : "") +
+      '<div class="row2"><label class="field" for="pp-date"><span>Date</span><input type="date" id="pp-date" value="' + todayISO() + '"></label>' +
+      (abs > 0 ? '<label class="field" for="pp-acct"><span>' + (net > 0 ? "Received into" : "Paid from") + '</span><select id="pp-acct">' + acctOptions(null, true, "No account") + "</select></label>" : "") + "</div>" +
+      '<p class="form-msg" id="pp-msg" role="status" aria-live="polite"></p>' +
+      '<div class="actions"><button class="btn primary" type="submit" id="pp-save">' + (abs > 0 ? "Save" : "Settle up") + '</button><button class="btn ghost" type="button" id="pp-cancel">Cancel</button></div></form>',
+      "Settle up");
+    var amtIn = $("pp-amt");
+    if (amtIn) amtIn.addEventListener("input", function () {
+      var v = parseAmt(amtIn.value), hint = $("pp-left");
+      if (!(v >= 0) || amtIn.value.trim() === "") hint.textContent = "Enter the amount.";
+      else if (v > abs + 0.004) hint.textContent = "That's more than the " + inr(abs) + (net > 0 ? " " + name + " owes." : " you owe.");
+      else if (abs - v < 0.005) hint.textContent = "This settles everything with " + name + ".";
+      else hint.textContent = inr(round2(abs - v)) + (net > 0 ? " will still be left to receive." : " will still be left to give.");
+    });
+    $("pp-cancel").addEventListener("click", closeSheet);
+    $("pp-form").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var out = $("pp-msg"), d = $("pp-date").value, cash = amtIn ? parseAmt(amtIn.value) : 0;
+      if (amtIn && (!(cash >= 0) || amtIn.value.trim() === "")) return msg(out, "Enter the amount.", "err");
+      if (cash > abs + 0.004) return msg(out, "Only " + inr(abs) + " is left.", "err");
+      if (!(cash > 0) && !(plan0.off > 0)) return msg(out, "Enter the amount.", "err");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return msg(out, "Pick a date.", "err");
+      if (S.loanPay === false) return msg(out, "Settling up needs a small database update first.", "err");
+      var plan = personPlan(items, Math.min(cash, abs), d, $("pp-acct") ? $("pp-acct").value : null);
+      busy($("pp-save"), true, "Saving…");
+      try {
+        for (var i = 0; i < items.length; i++) {
+          var l = items[i], add = plan.adds[l.id];
+          if (!add) continue;
+          var body = { payments: payJSON(l.payments.concat(add)) };
+          if (loanLeft(l) - plan.taken[l.id] < 0.005) { body.settled = true; body.settled_on = d; }
+          upsertLocal(S.loans, cleanLoan(await dbSave("loans", body, l.id, loanCols())));
+        }
+        closeSheet(); renderLoans(); afterMoneyChange();
+        var rest = round2(abs - cash);
+        toast(rest < 0.005 ? "Settled up with " + name : (net > 0 ? "Got " + inr(cash) + " from " + name + ". " + inr(rest) + " still to receive" : "Paid " + inr(cash) + " to " + name + ". " + inr(rest) + " still to give"));
+      } catch (err) {
+        msg(out, featureErr(err), "err"); busy($("pp-save"), false);
+        loadData(true);
+      }
+    });
   }
   /* Money coming back (or going back): full or part */
   function openPayback(id) {
@@ -2413,7 +2499,7 @@ section.card { scroll-margin-top: 64px; }
         if (!full) return msg(out, "Part payments need a small database update first.", "err");
         body = { settled: true, settled_on: d };
       } else {
-        body = { payments: payJSON(l.payments).concat({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), amount: round2(amt), date: d, account_id: $("pb-acct").value || null }) };
+        body = { payments: payJSON(l.payments.concat({ id: newPayId(), amount: round2(amt), date: d, accountId: $("pb-acct").value || null, offset: false })) };
         if (full) { body.settled = true; body.settled_on = d; }
       }
       busy($("pb-save"), true, "Saving…");
@@ -2433,7 +2519,8 @@ section.card { scroll-margin-top: 64px; }
       '<form id="ln-form" class="entry" novalidate data-type="' + (dir === "lent" ? "income" : "expense") + '">' +
       '<div class="seg" role="radiogroup" aria-label="Direction"><button type="button" class="seg-btn" role="radio" data-dir="lent" aria-checked="' + (dir === "lent") + '">I lent</button>' +
       '<button type="button" class="seg-btn" role="radio" data-dir="borrowed" aria-checked="' + (dir === "borrowed") + '">I borrowed</button></div>' +
-      '<label class="field" for="ln-person"><span>Person</span><input id="ln-person" maxlength="60" autocomplete="off" placeholder="Who?" value="' + (l ? esc(l.person) : "") + '"></label>' +
+      '<label class="field" for="ln-person"><span>Person</span><input id="ln-person" list="ln-people" maxlength="60" autocomplete="off" placeholder="Who?" value="' + (l ? esc(l.person) : "") + '"></label>' +
+      '<datalist id="ln-people">' + loanPeople().map(function (n) { return '<option value="' + esc(n) + '"></option>'; }).join("") + "</datalist>" +
       '<label class="amount" for="ln-amt"><span class="rupee" aria-hidden="true">₹</span><input id="ln-amt" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Amount in rupees" value="' + (l ? esc(String(l.amount)) : "") + '"></label>' +
       '<div class="row2"><label class="field" for="ln-date"><span>Date</span><input type="date" id="ln-date" value="' + (l ? l.date : todayISO()) + '"></label>' +
       '<label class="field" for="ln-due"><span>Pay back by <i>(optional)</i></span><input type="date" id="ln-due" value="' + (l && l.due ? l.due : "") + '"></label></div>' +
@@ -2441,7 +2528,7 @@ section.card { scroll-margin-top: 64px; }
       '<label class="field" for="ln-note"><span>Note <i>(optional)</i></span><input id="ln-note" maxlength="200" autocomplete="off" value="' + (l ? esc(l.note) : "") + '"></label>' +
       (l && l.payments.length ? '<div class="pay-list"><span class="pay-h">' + (l.direction === "lent" ? "Money back so far" : "Paid back so far") + " · " + inr(loanPaid(l)) + (loanLeft(l) > 0 ? " · " + inr(loanLeft(l)) + " left" : "") + "</span>" +
         l.payments.map(function (p, i) { var pa = p.accountId ? acctById(p.accountId) : null;
-          return '<div class="pay-row"><span>' + fmtDate(p.date) + (pa ? " · " + esc(acctLabel(pa)) : "") + '</span><span class="num">' + inr(p.amount) + '</span><button class="btn ghost" type="button" data-unpay="' + i + '">Remove</button></div>'; }).join("") + "</div>" : "") +
+          return '<div class="pay-row"><span>' + fmtDate(p.date) + (p.offset ? " · set off" : pa ? " · " + esc(acctLabel(pa)) : "") + '</span><span class="num">' + inr(p.amount) + '</span><button class="btn ghost" type="button" data-unpay="' + i + '">Remove</button></div>'; }).join("") + "</div>" : "") +
       '<p class="form-msg">Picking an account updates its balance now, and again when money comes back. It doesn’t count as income or spending.</p>' +
       '<p class="form-msg" id="ln-msg" role="status" aria-live="polite"></p>' +
       '<div class="actions"><button class="btn primary" type="submit" id="ln-save">' + (l ? "Save changes" : "Add") + "</button>" +
@@ -2460,8 +2547,9 @@ section.card { scroll-margin-top: 64px; }
     $("ln-cancel").addEventListener("click", closeSheet);
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
-      var out = $("ln-msg"), person = $("ln-person").value.trim().replace(/\s+/g, " "), amount = parseAmt($("ln-amt").value), d = $("ln-date").value, due = $("ln-due").value;
+      var out = $("ln-msg"), person = $("ln-person").value.trim().replace(/\s+/g, " "), known = loanPeople().filter(function (n) { return loanKey(n) === loanKey(person); })[0], amount = parseAmt($("ln-amt").value), d = $("ln-date").value, due = $("ln-due").value;
       if (!person) return msg(out, "Who is it with?", "err");
+      if (known) person = nicerName(known, person);
       if (!(amount > 0) || amount >= 1e9) return msg(out, "Enter the amount.", "err");
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return msg(out, "Pick a date.", "err");
       if (l && amount < loanPaid(l) - 0.004) return msg(out, inr(loanPaid(l)) + " has already come back, so the amount can't be less than that.", "err");
@@ -2546,6 +2634,7 @@ section.card { scroll-margin-top: 64px; }
     var b = e.target.closest("button"); if (!b) return;
     if (b.dataset.loan) openLoan(b.dataset.loan);
     else if (b.dataset.back) openPayback(b.dataset.back);
+    else if (b.dataset.person) openPersonPay(b.dataset.person);
   });
   $("yr-prev").addEventListener("click", function () { S.year--; renderYear(); });
   $("yr-next").addEventListener("click", function () { if (S.year < new Date().getFullYear()) { S.year++; renderYear(); } });
