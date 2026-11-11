@@ -289,6 +289,21 @@ section.card { scroll-margin-top: 64px; }
 .pill.soon { color: var(--warn); }
 .pill.late { color: var(--debit); }
 .loan-row.settled { opacity: .65; }
+.person { display: grid; gap: 2px; padding: 12px 2px 8px; border-bottom: 1px solid var(--rule); }
+.person:first-child { border-top: 1px solid var(--rule); }
+.person-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.person-name { font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
+.person-net { display: flex; gap: 8px; align-items: baseline; flex: none; }
+.person-net .k { font: 500 11px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.person-net .amt { font-size: 17px; }
+.person .loan-row, .person .loan-row:first-child { border: 0; border-left: 2px solid var(--rule); padding: 6px 0 6px 12px; margin-top: 8px; }
+.person .row-name { font-weight: 500; font-size: 14px; }
+.left-k { font: 500 12px/1 var(--mono); color: var(--muted); }
+.loan-done-h { margin: 16px 0 0; font: 500 11px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.pay-list { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 12px; }
+.pay-h { font-size: 13px; font-weight: 600; }
+.pay-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; font-size: 13px; }
+.pay-row .btn { min-height: 32px; padding: 0 10px; font-size: 12px; }
 
 /* Transfers */
 .amt.transfer { color: var(--accent); }
@@ -1160,7 +1175,7 @@ section.card { scroll-margin-top: 64px; }
         sb.from("categories").select("id,type,name").order("created_at", { ascending: true }),
         sb.from("recurring").select(REC_COLS).order("day_of_month", { ascending: true }),
         sb.from("category_budgets").select(CB_COLS),
-        sb.from("loans").select(LOAN_COLS).order("date", { ascending: true }),
+        fetchLoans(),
         sb.from("goals").select(GOAL_COLS).order("created_at", { ascending: true })
       ]);
       if (res[2].error) throw res[2].error;
@@ -1298,7 +1313,7 @@ section.card { scroll-margin-top: 64px; }
       S.accounts = S.accounts.filter(function (a) { return a.id !== id; });
       S.txns.forEach(function (t) { if (t.accountId === id) t.accountId = null; if (t.toAccountId === id) t.toAccountId = null; });
       S.recurring.forEach(function (r) { if (r.accountId === id) r.accountId = null; });
-      S.loans.forEach(function (l) { if (l.accountId === id) l.accountId = null; });
+      S.loans.forEach(function (l) { if (l.accountId === id) l.accountId = null; l.payments.forEach(function (p) { if (p.accountId === id) p.accountId = null; }); });
       if (S.acctFilter === id) S.acctFilter = "all";
       if (recall("ml-last-acct") === id) store("ml-last-acct", null);
       addF.refreshAccounts();
@@ -1909,7 +1924,8 @@ section.card { scroll-margin-top: 64px; }
      ===================================================== */
   var REC_COLS = "id,type,name,amount,category,method,account_id,day_of_month,active,created_at",
       CB_COLS = "id,category,amount",
-      LOAN_COLS = "id,direction,person,amount,date,due_date,note,account_id,settled,settled_on,created_at",
+      LOAN_COLS_BASE = "id,direction,person,amount,date,due_date,note,account_id,settled,settled_on,created_at",
+      LOAN_COLS = LOAN_COLS_BASE + ",payments",
       GOAL_COLS = "id,name,target,saved,target_date,created_at";
 
   /* Money moving: income +, spending -, transfers don't change the month's totals */
@@ -1918,18 +1934,43 @@ section.card { scroll-margin-top: 64px; }
     if (t.type === "transfer") return (t.accountId === id ? -t.amount : 0) + (t.toAccountId === id ? t.amount : 0);
     return t.accountId === id ? flowOf(t) : 0;
   }
-  /* Lend & borrow linked to an account: money leaves/arrives on the date, and comes back when settled */
+  /* Lend & borrow linked to an account: money leaves/arrives on the date, comes back with each
+     part payment (into the account picked for it), and whatever is left comes back when settled */
   function loanEvents(id) {
     var ev = [];
     S.loans.forEach(function (l) {
-      if (l.accountId !== id) return;
-      var out = l.direction === "lent" ? -l.amount : l.amount;
-      ev.push({ kind: "loan", id: "L" + l.id + "a", loan: l, date: l.date, createdAt: l.createdAt, delta: out,
-        label: l.direction === "lent" ? "Lent to " + l.person : "Borrowed from " + l.person });
-      if (l.settled) ev.push({ kind: "loan", id: "L" + l.id + "b", loan: l, date: l.settledOn || l.date, createdAt: l.createdAt + "~", delta: -out,
-        label: l.direction === "lent" ? l.person + " paid you back" : "Paid back " + l.person });
+      var lent = l.direction === "lent", back = lent ? 1 : -1, backLabel = lent ? l.person + " paid you back" : "Paid back " + l.person;
+      if (l.accountId === id) ev.push({ kind: "loan", id: "L" + l.id + "a", loan: l, date: l.date, createdAt: l.createdAt, delta: -back * l.amount,
+        label: lent ? "Lent to " + l.person : "Borrowed from " + l.person });
+      l.payments.forEach(function (p, i) {
+        if (p.accountId === id) ev.push({ kind: "loan", id: "L" + l.id + "p" + i, loan: l, date: p.date, createdAt: l.createdAt + "~" + i, delta: back * p.amount, label: backLabel });
+      });
+      var rest = round2(l.amount - loanPaid(l));
+      if (l.settled && rest > 0 && l.accountId === id) ev.push({ kind: "loan", id: "L" + l.id + "b", loan: l, date: l.settledOn || l.date, createdAt: l.createdAt + "~~", delta: back * rest, label: backLabel });
     });
     return ev;
+  }
+  function round2(n) { return Math.round(n * 100) / 100; }
+  function loanPaid(l) { return round2(l.payments.reduce(function (s, p) { return s + p.amount; }, 0)); }
+  /* What's still to come back (lent) or still to pay back (borrowed) */
+  function loanLeft(l) { return l.settled ? 0 : Math.max(0, round2(l.amount - loanPaid(l))); }
+  function loanDone(l) { return loanLeft(l) <= 0; }
+  function loanDoneOn(l) {
+    if (l.settled && l.settledOn) return l.settledOn;
+    return l.payments.reduce(function (m, p) { return p.date > m ? p.date : m; }, "") || l.date;
+  }
+  function loanKey(name) { return String(name).trim().toLowerCase().replace(/\s+/g, " "); }
+  /* Same person typed as "ravi" and "Ravi": show the capitalised spelling */
+  function nicerName(cur, next) { return !cur || next !== next.toLowerCase() || cur === cur.toLowerCase() ? next : cur; }
+  function payJSON(list) { return list.map(function (p) { return { id: p.id, amount: p.amount, date: p.date, account_id: p.accountId }; }); }
+  function loanCols() { return S.loanPay === false ? LOAN_COLS_BASE : LOAN_COLS; }
+  async function fetchLoans() {
+    var r = await sb.from("loans").select(LOAN_COLS).order("date", { ascending: true });
+    if (r.error && /column|42703|payments/i.test(String(r.error.message || "") + String(r.error.code || ""))) {
+      S.loanPay = false;
+      r = await sb.from("loans").select(LOAN_COLS_BASE).order("date", { ascending: true });
+    } else if (!r.error) S.loanPay = true;
+    return r;
   }
 
   function isoOrNull(v) { return typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null; }
@@ -1947,7 +1988,12 @@ section.card { scroll-margin-top: 64px; }
     if (!r || !r.id || !(a > 0) || !isoOrNull(r.date)) return null;
     return { id: String(r.id), direction: r.direction === "borrowed" ? "borrowed" : "lent", person: String(r.person || "Someone"), amount: a,
       date: isoOrNull(r.date), due: isoOrNull(r.due_date), note: String(r.note || ""), accountId: r.account_id ? String(r.account_id) : null,
-      settled: !!r.settled, settledOn: isoOrNull(r.settled_on), createdAt: String(r.created_at || "") };
+      settled: !!r.settled, settledOn: isoOrNull(r.settled_on), createdAt: String(r.created_at || ""),
+      payments: Array.isArray(r.payments) ? r.payments.map(cleanPay).filter(Boolean).sort(function (x, y) { return x.date < y.date ? -1 : x.date > y.date ? 1 : 0; }) : [] };
+  }
+  function cleanPay(p) {
+    var a = Number(p && p.amount), d = isoOrNull(p && p.date);
+    return a > 0 && d ? { id: String(p.id || d + "-" + a), amount: a, date: d, accountId: p.account_id ? String(p.account_id) : null } : null;
   }
   function cleanGoal(r) {
     var t = Number(r && r.target), sv = Number(r && r.saved);
@@ -2189,9 +2235,10 @@ section.card { scroll-margin-top: 64px; }
       S.recurring.forEach(function (r) { if (r.active && r.type === "expense" && !recStatus(r, ym).paid) due += r.amount; });
       if (due) items.push(["Bills due", inr(due) + " still to pay this month"]);
     }
-    var owed = 0;
-    S.loans.forEach(function (l) { if (!l.settled && l.direction === "lent") owed += l.amount; });
-    if (owed) items.push(["Owed to you", inr(owed) + " from friends"]);
+    var owed = 0, who = {};
+    S.loans.forEach(function (l) { var left = loanLeft(l); if (left > 0 && l.direction === "lent") { owed += left; var k = loanKey(l.person); who[k] = nicerName(who[k], l.person); } });
+    var whoN = Object.keys(who);
+    if (owed) items.push(["To receive", inr(owed) + " from " + (whoN.length === 1 ? who[whoN[0]] : whoN.length + " people")]);
     $("ins").innerHTML = items.length ? items.map(function (i) { return '<li><span class="k">' + esc(i[0]) + "</span><span>" + esc(i[1]) + "</span></li>"; }).join("")
       : '<li class="empty">Add a few entries this month to see insights here.</li>';
   }
@@ -2275,32 +2322,109 @@ section.card { scroll-margin-top: 64px; }
   }
 
   /* ---------- Lend & borrow ---------- */
+  function loanItemHTML(l, today, withName) {
+    var lent = l.direction === "lent", paid = loanPaid(l), left = loanLeft(l), done = loanDone(l), a = l.accountId ? acctById(l.accountId) : null, st;
+    if (done) st = '<span class="pill paid">Settled ' + fmtDate(loanDoneOn(l)) + "</span>";
+    else if (l.due) {
+      var d = daysBetween(today, l.due);
+      st = '<span class="pill ' + (d < 0 ? "late" : d <= 3 ? "soon" : "due") + '">' + (d < 0 ? "Overdue by " + -d + (d === -1 ? " day" : " days") : d === 0 ? "Due today" : "Due " + fmtDate(l.due)) + "</span>";
+    } else st = '<span class="pill muted">No due date</span>';
+    var title = (withName ? l.person + " · " : "") + (lent ? "Lent " : "Borrowed ") + inr(l.amount) + " · " + fmtDate(l.date);
+    var sub = [paid ? (lent ? "Got back " : "Paid back ") + inr(paid) + (l.payments.length > 1 ? " in " + l.payments.length + " parts" : "") : "", a ? acctLabel(a) : "", l.note].filter(Boolean).join(" · ");
+    var right = done ? '<span class="amt">' + inr(l.amount) + "</span>"
+      : '<span class="amt ' + (lent ? "income" : "expense") + '">' + inr(left) + (paid ? '<span class="left-k"> left</span>' : "") + "</span>";
+    return '<div class="loan-row' + (done ? " settled" : "") + '"><div class="row-top"><button class="row-name" type="button" data-loan="' + esc(l.id) + '">' + esc(title) + "</button>" + right + "</div>" +
+      (sub ? '<span class="row-sub">' + esc(sub) + "</span>" : "") +
+      (paid && !done ? '<div class="goal-bar" aria-hidden="true"><span style="width:' + (Math.min(1, paid / l.amount) * 100).toFixed(1) + '%"></span></div>' : "") +
+      '<div class="row-act">' + st + (done ? "" : '<button class="btn ghost" type="button" data-back="' + esc(l.id) + '">' + (lent ? "Got money back" : "Pay back") + "</button>") + "</div></div>";
+  }
   function renderLoans() {
-    var owed = 0, owe = 0, open = S.loans.filter(function (l) { return !l.settled; }), settled = S.loans.filter(function (l) { return l.settled; });
-    open.forEach(function (l) { if (l.direction === "lent") owed += l.amount; else owe += l.amount; });
-    $("loan-sum").innerHTML = S.loans.length ? 'Friends owe you <strong class="num">' + inr(owed) + '</strong> · You owe <strong class="num">' + inr(owe) + "</strong>" : "";
-    var list = open.slice().sort(function (a, b) { return (a.due || "9999") < (b.due || "9999") ? -1 : (a.due || "9999") > (b.due || "9999") ? 1 : 0; });
-    if (S.showSettled) list = list.concat(settled.slice().sort(function (a, b) { return (a.settledOn || "") < (b.settledOn || "") ? 1 : -1; }));
+    var get = 0, give = 0, open = S.loans.filter(function (l) { return !loanDone(l); }), settled = S.loans.filter(loanDone);
+    open.forEach(function (l) { if (l.direction === "lent") get += loanLeft(l); else give += loanLeft(l); });
+    $("loan-sum").innerHTML = S.loans.length ? 'To receive <strong class="num">' + inr(get) + '</strong> · To give <strong class="num">' + inr(give) + "</strong>" : "";
     $("loan-toggle").hidden = !settled.length;
     $("loan-toggle").textContent = S.showSettled ? "Hide settled" : "Show settled (" + settled.length + ")";
-    if (!list.length) {
-      $("loan-list").innerHTML = '<p class="empty">' + (S.loans.length ? "Everything is settled." : "Lent money to a friend, or borrowed some? Add it here so nobody forgets.") + "</p>";
+    if (!open.length && !(S.showSettled && settled.length)) {
+      $("loan-list").innerHTML = '<p class="empty">' + (S.loans.length ? "Everything is settled." : "Gave money to someone, or borrowed some? Add it here and see what each person still has to give back.") + "</p>";
       return;
     }
-    var today = todayISO();
-    $("loan-list").innerHTML = list.map(function (l) {
-      var a = l.accountId ? acctById(l.accountId) : null, st;
-      if (l.settled) st = '<span class="pill paid">Settled ' + fmtDate(l.settledOn || l.date) + "</span>";
-      else if (l.due) {
-        var d = daysBetween(today, l.due);
-        st = '<span class="pill ' + (d < 0 ? "late" : d <= 3 ? "soon" : "due") + '">' + (d < 0 ? "Overdue by " + -d + (d === -1 ? " day" : " days") : d === 0 ? "Due today" : "Due " + fmtDate(l.due)) + "</span>";
-      } else st = '<span class="pill muted">No due date</span>';
-      var sub = [(l.direction === "lent" ? "You lent" : "You borrowed") + " on " + fmtDate(l.date), a ? acctLabel(a) : "", l.note].filter(Boolean).join(" · ");
-      return '<div class="loan-row' + (l.settled ? " settled" : "") + '"><div class="row-top"><button class="row-name" type="button" data-loan="' + esc(l.id) + '">' + esc(l.person) + "</button>" +
-        '<span class="amt ' + (l.direction === "lent" ? "income" : "expense") + '">' + inr(l.amount) + "</span></div>" +
-        '<span class="row-sub">' + esc(sub) + "</span>" +
-        '<div class="row-act">' + st + (l.settled ? "" : '<button class="btn ghost" type="button" data-settle="' + esc(l.id) + '">' + (l.direction === "lent" ? "Got it back" : "Paid it back") + "</button>") + "</div></div>";
+    /* One block per person: what's still to receive from them, minus what you still owe them */
+    var groups = {}, order = [], today = todayISO();
+    open.forEach(function (l) {
+      var k = loanKey(l.person);
+      if (!groups[k]) { groups[k] = { name: l.person, items: [], get: 0, give: 0, due: "9999-99-99" }; order.push(k); }
+      var g = groups[k];
+      g.items.push(l); g.name = nicerName(g.name, l.person);
+      if (l.direction === "lent") g.get += loanLeft(l); else g.give += loanLeft(l);
+      if (l.due && l.due < g.due) g.due = l.due;
+    });
+    order.sort(function (a, b) {
+      var A = groups[a], B = groups[b];
+      return A.due < B.due ? -1 : A.due > B.due ? 1 : Math.abs(B.get - B.give) - Math.abs(A.get - A.give);
+    });
+    var html = order.map(function (k) {
+      var g = groups[k], net = round2(g.get - g.give);
+      var head = net > 0 ? '<span class="k">To receive</span><span class="amt income">' + inr(net) + "</span>"
+        : net < 0 ? '<span class="k">To give</span><span class="amt expense">' + inr(-net) + "</span>"
+        : '<span class="k">Even</span><span class="amt">' + inr(0) + "</span>";
+      var mix = g.get && g.give ? '<span class="row-sub">' + esc("You get " + inr(g.get) + " · you owe " + inr(g.give)) + "</span>" : "";
+      g.items.sort(function (x, y) { var X = x.due || "9999", Y = y.due || "9999"; return X < Y ? -1 : X > Y ? 1 : x.date < y.date ? -1 : 1; });
+      return '<div class="person"><div class="person-head"><span class="person-name">' + esc(g.name) + '</span><span class="person-net">' + head + "</span></div>" + mix +
+        g.items.map(function (l) { return loanItemHTML(l, today, false); }).join("") + "</div>";
     }).join("");
+    if (S.showSettled && settled.length) {
+      html += '<p class="loan-done-h">Settled</p><div class="loan-done">' + settled.slice().sort(function (a, b) { return loanDoneOn(a) < loanDoneOn(b) ? 1 : -1; })
+        .map(function (l) { return loanItemHTML(l, today, true); }).join("") + "</div>";
+    }
+    $("loan-list").innerHTML = html;
+  }
+  /* Money coming back (or going back): full or part */
+  function openPayback(id) {
+    var l = S.loans.filter(function (x) { return x.id === id; })[0]; if (!l) return;
+    var lent = l.direction === "lent", left = loanLeft(l), paid = loanPaid(l);
+    openSheet('<h3 class="sheet-title">' + esc(lent ? l.person + " paid you back" : "Pay back " + l.person) + "</h3>" +
+      '<form id="pb-form" class="entry" novalidate data-type="' + (lent ? "income" : "expense") + '">' +
+      '<p class="b-text">' + esc((lent ? "Lent " : "Borrowed ") + inr(l.amount) + " on " + fmtDate(l.date) + (paid ? " · " + (lent ? "got back " : "paid back ") + inr(paid) + " so far" : "")) +
+      '<br><strong class="num">' + esc(inr(left) + (lent ? " still to receive" : " still to give")) + "</strong></p>" +
+      '<label class="amount" for="pb-amt"><span class="rupee" aria-hidden="true">₹</span><input id="pb-amt" inputmode="decimal" autocomplete="off" aria-label="Amount in rupees" value="' + esc(String(left)) + '"></label>' +
+      '<p class="form-msg" id="pb-left">Change the amount if only part came back.</p>' +
+      '<div class="row2"><label class="field" for="pb-date"><span>Date</span><input type="date" id="pb-date" value="' + todayISO() + '"></label>' +
+      '<label class="field" for="pb-acct"><span>' + (lent ? "Received into" : "Paid from") + '</span><select id="pb-acct">' + acctOptions(l.accountId, true, "No account") + "</select></label></div>" +
+      '<p class="form-msg" id="pb-msg" role="status" aria-live="polite"></p>' +
+      '<div class="actions"><button class="btn primary" type="submit" id="pb-save">Save</button><button class="btn ghost" type="button" id="pb-cancel">Cancel</button></div></form>',
+      lent ? "Money back" : "Pay back");
+    var amtIn = $("pb-amt"), hint = $("pb-left");
+    amtIn.addEventListener("input", function () {
+      var v = parseAmt(amtIn.value);
+      if (!(v > 0)) hint.textContent = "Enter how much " + (lent ? "came back." : "you paid.");
+      else if (v > left + 0.004) hint.textContent = "That's more than the " + inr(left) + " left.";
+      else if (left - v < 0.005) hint.textContent = "This settles it with " + l.person + ".";
+      else hint.textContent = inr(round2(left - v)) + (lent ? " will still be left to receive." : " will still be left to give.");
+    });
+    $("pb-cancel").addEventListener("click", closeSheet);
+    $("pb-form").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var out = $("pb-msg"), amt = parseAmt(amtIn.value), d = $("pb-date").value;
+      if (!(amt > 0)) return msg(out, "Enter the amount.", "err");
+      if (amt > left + 0.004) return msg(out, "Only " + inr(left) + " is left.", "err");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return msg(out, "Pick a date.", "err");
+      var full = left - amt < 0.005, body;
+      if (S.loanPay === false) {
+        if (!full) return msg(out, "Part payments need a small database update first.", "err");
+        body = { settled: true, settled_on: d };
+      } else {
+        body = { payments: payJSON(l.payments).concat({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), amount: round2(amt), date: d, account_id: $("pb-acct").value || null }) };
+        if (full) { body.settled = true; body.settled_on = d; }
+      }
+      busy($("pb-save"), true, "Saving…");
+      try {
+        upsertLocal(S.loans, cleanLoan(await dbSave("loans", body, l.id, loanCols())));
+        closeSheet(); renderLoans(); afterMoneyChange();
+        var still = inr(round2(left - amt));
+        toast(full ? (lent ? l.person + " paid you back in full" : "Paid back " + l.person + " in full")
+          : lent ? "Got " + inr(amt) + " from " + l.person + ". " + still + " still to receive" : "Paid " + inr(amt) + " to " + l.person + ". " + still + " still to give");
+      } catch (err) { msg(out, featureErr(err), "err"); busy($("pb-save"), false); }
+    });
   }
   function openLoan(id) {
     var l = id ? S.loans.filter(function (x) { return x.id === id; })[0] : null, dir = l ? l.direction : "lent";
@@ -2315,10 +2439,14 @@ section.card { scroll-margin-top: 64px; }
       '<label class="field" for="ln-due"><span>Pay back by <i>(optional)</i></span><input type="date" id="ln-due" value="' + (l && l.due ? l.due : "") + '"></label></div>' +
       '<label class="field" for="ln-acct"><span id="ln-acct-lbl">' + acctText() + '</span><select id="ln-acct">' + acctOptions(l ? l.accountId : null, true, "Not linked to an account") + "</select></label>" +
       '<label class="field" for="ln-note"><span>Note <i>(optional)</i></span><input id="ln-note" maxlength="200" autocomplete="off" value="' + (l ? esc(l.note) : "") + '"></label>' +
-      '<p class="form-msg">Picking an account updates its balance now, and again when it’s settled. It doesn’t count as income or spending.</p>' +
+      (l && l.payments.length ? '<div class="pay-list"><span class="pay-h">' + (l.direction === "lent" ? "Money back so far" : "Paid back so far") + " · " + inr(loanPaid(l)) + (loanLeft(l) > 0 ? " · " + inr(loanLeft(l)) + " left" : "") + "</span>" +
+        l.payments.map(function (p, i) { var pa = p.accountId ? acctById(p.accountId) : null;
+          return '<div class="pay-row"><span>' + fmtDate(p.date) + (pa ? " · " + esc(acctLabel(pa)) : "") + '</span><span class="num">' + inr(p.amount) + '</span><button class="btn ghost" type="button" data-unpay="' + i + '">Remove</button></div>'; }).join("") + "</div>" : "") +
+      '<p class="form-msg">Picking an account updates its balance now, and again when money comes back. It doesn’t count as income or spending.</p>' +
       '<p class="form-msg" id="ln-msg" role="status" aria-live="polite"></p>' +
       '<div class="actions"><button class="btn primary" type="submit" id="ln-save">' + (l ? "Save changes" : "Add") + "</button>" +
-      (l ? '<button class="btn ghost" type="button" id="ln-toggle">' + (l.settled ? "Mark as not settled" : "Mark settled") + '</button><button class="btn danger" type="button" id="ln-del">Delete</button>' : "") +
+      (l && (l.settled || loanPaid(l) < l.amount) ? '<button class="btn ghost" type="button" id="ln-toggle">' + (l.settled ? "Mark as not settled" : "Mark settled") + "</button>" : "") +
+      (l ? '<button class="btn danger" type="button" id="ln-del">Delete</button>' : "") +
       '<button class="btn ghost" type="button" id="ln-cancel">Cancel</button></div></form>', "Lend or borrow");
     var form = $("ln-form");
     form.querySelectorAll(".seg-btn").forEach(function (b) {
@@ -2336,18 +2464,28 @@ section.card { scroll-margin-top: 64px; }
       if (!person) return msg(out, "Who is it with?", "err");
       if (!(amount > 0) || amount >= 1e9) return msg(out, "Enter the amount.", "err");
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return msg(out, "Pick a date.", "err");
+      if (l && amount < loanPaid(l) - 0.004) return msg(out, inr(loanPaid(l)) + " has already come back, so the amount can't be less than that.", "err");
       var body = { direction: dir, person: person.slice(0, 60), amount: amount, date: d, due_date: due || null, account_id: $("ln-acct").value || null, note: $("ln-note").value.trim().slice(0, 200) };
       busy($("ln-save"), true, "Saving…");
       try {
-        upsertLocal(S.loans, cleanLoan(await dbSave("loans", body, l && l.id, LOAN_COLS)));
+        upsertLocal(S.loans, cleanLoan(await dbSave("loans", body, l && l.id, loanCols())));
         closeSheet(); renderLoans(); afterMoneyChange(); toast((l ? "Updated " : "Added ") + (dir === "lent" ? "lent to " : "borrowed from ") + person);
       } catch (err) { msg(out, featureErr(err), "err"); busy($("ln-save"), false); }
     });
     if (l) {
-      $("ln-toggle").addEventListener("click", async function () {
+      form.querySelectorAll("[data-unpay]").forEach(function (b) {
+        armButton(b, "Tap to remove", async function () {
+          var rest = l.payments.filter(function (p, i) { return i !== +b.dataset.unpay; });
+          try {
+            upsertLocal(S.loans, cleanLoan(await dbSave("loans", { payments: payJSON(rest), settled: false, settled_on: null }, l.id, loanCols())));
+            closeSheet(); renderLoans(); afterMoneyChange(); toast("Removed that payment");
+          } catch (err) { msg($("ln-msg"), featureErr(err), "err"); }
+        });
+      });
+      if ($("ln-toggle")) $("ln-toggle").addEventListener("click", async function () {
         busy(this, true, "Saving…");
         try {
-          upsertLocal(S.loans, cleanLoan(await dbSave("loans", { settled: !l.settled, settled_on: l.settled ? null : todayISO() }, l.id, LOAN_COLS)));
+          upsertLocal(S.loans, cleanLoan(await dbSave("loans", { settled: !l.settled, settled_on: l.settled ? null : todayISO() }, l.id, loanCols())));
           closeSheet(); renderLoans(); afterMoneyChange(); toast(l.settled ? "Marked " + l.person + " as not settled" : "Settled with " + l.person);
         } catch (err) { msg($("ln-msg"), featureErr(err), "err"); busy(this, false); }
       });
@@ -2404,22 +2542,10 @@ section.card { scroll-margin-top: 64px; }
   });
   $("loan-add").addEventListener("click", function () { openLoan(null); });
   $("loan-toggle").addEventListener("click", function () { S.showSettled = !S.showSettled; renderLoans(); });
-  $("loan-list").addEventListener("click", async function (e) {
+  $("loan-list").addEventListener("click", function (e) {
     var b = e.target.closest("button"); if (!b) return;
-    if (b.dataset.loan) { openLoan(b.dataset.loan); return; }
-    if (!b.dataset.settle) return;
-    if (!b.classList.contains("armed")) {
-      b.classList.add("armed", "danger"); b.classList.remove("ghost"); b.textContent = "Tap to confirm";
-      setTimeout(function () { if (document.contains(b) && !b.disabled) renderLoans(); }, 4000);
-      return;
-    }
-    var l = S.loans.filter(function (x) { return x.id === b.dataset.settle; })[0]; if (!l) return;
-    b.disabled = true;
-    try {
-      upsertLocal(S.loans, cleanLoan(await dbSave("loans", { settled: true, settled_on: todayISO() }, l.id, LOAN_COLS)));
-      renderLoans(); afterMoneyChange();
-      toast(l.direction === "lent" ? l.person + " paid you back " + inr(l.amount) : "You paid back " + l.person + " " + inr(l.amount));
-    } catch (err) { toast(featureErr(err)); renderLoans(); }
+    if (b.dataset.loan) openLoan(b.dataset.loan);
+    else if (b.dataset.back) openPayback(b.dataset.back);
   });
   $("yr-prev").addEventListener("click", function () { S.year--; renderYear(); });
   $("yr-next").addEventListener("click", function () { if (S.year < new Date().getFullYear()) { S.year++; renderYear(); } });
