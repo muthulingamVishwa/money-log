@@ -6,6 +6,14 @@ Money Log is an income and expense tracker with accounts:
 - **Email verification code (OTP)**: after signing up, the user gets a code by email and must enter it before the account works.
 - **Log in** with email and password. **Forgot password** sends a code by email and lets the user set a new password.
 - **Accounts**: add as many bank accounts as you like (or cash, wallet, credit card) with the bank name, account number and current balance. Only the last 4 digits of the account number are saved (shown as ••1234), which is enough to tell two accounts at the same bank apart. When adding an entry, tap the account the money came from or went into. Link an entry to an account and the balance updates. Filter the passbook by account to see a running account balance like a bank passbook.
+- **Transfers**: move money between your own accounts (bank to bank, ATM cash, paying a card bill) without it counting as spending.
+- **Bills & salary**: add rent, EMIs, subscriptions and salary once with their day of the month. Each month they show as due, overdue or paid, and one tap adds the entry.
+- **Category budgets and insights**: monthly limits per category (amber at 85%, red when over), plus insights such as spending vs last month, daily average and month-end pace.
+- **Search and year report**: search every entry by note, category, amount, account or month. The year report has month-by-month totals, top categories and a CSV download.
+- **Savings goals** with a target and date, showing how much to save each month.
+- **Lend & borrow**: who owes you and whom you owe, with due dates. Linking an account keeps its balance right.
+- **Installs as a phone app**: Add to Home screen gives an app icon and opens full screen.
+- **Auto logout** after 5 minutes without activity.
 - Each person sees only their own entries and accounts (enforced in the database, not just the app).
 
 Everything runs on free plans: **Supabase** (database, login, emails) and **GitHub Pages** (hosting). It takes about 30 minutes to set up.
@@ -17,6 +25,8 @@ Files in this folder:
 | `index.html` | The whole app |
 | `supabase-setup.sql` | Creates the tables, security rules and signup trigger |
 | `.github/workflows/keep-alive.yml` | Pings the database every 3 days so the free project never pauses |
+| `upgrade-features.sql` | Adds transfers, bills, category budgets, lend/borrow and goals to an existing database |
+| `manifest.webmanifest`, `sw.js`, `icon-*.png`, `apple-touch-icon.png` | Let the site install as a phone app |
 
 ---
 
@@ -31,7 +41,7 @@ Files in this folder:
 1. Open **SQL Editor** → **New query**.
 2. Paste everything from `supabase-setup.sql` → **Run**. It should say "Success. No rows returned".
 
-Already ran an older copy of the script? Run the new one again. It's safe to re-run: it adds the accounts table and keeps your existing data.
+Already ran an older copy of the script? Run `upgrade-features.sql` (or the whole new `supabase-setup.sql`). Both are safe to re-run and keep your existing data.
 
 ## 3. Turn on email verification and password rules
 

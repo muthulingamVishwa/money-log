@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#e9f0ee">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Money Log">
 <title>Money Log</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -257,8 +263,81 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .amt.expense { color: var(--debit); }
 .amt.income { color: var(--credit); }
 .bal { font: 400 12px/1.2 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
-.book-foot { display: flex; justify-content: flex-end; margin-top: 14px; }
+.book-foot { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 14px; }
+.book-foot .hint-line { flex: 1; }
+.book-foot .btn { flex: none; white-space: nowrap; }
 .foot { font-size: 13px; color: var(--muted); text-align: center; padding: 0 8px; }
+
+/* Section shortcut bar */
+.jump { position: sticky; top: 0; z-index: 30; margin: 0 -16px; padding: 8px 16px; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; background: var(--paper); border-bottom: 1px solid var(--rule); }
+.jump::-webkit-scrollbar { display: none; }
+.jump button { flex: none; min-height: 34px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--rule); background: var(--sheet); font-size: 13px; font-weight: 600; cursor: pointer; }
+.jump button:hover { border-color: var(--ink); }
+section.card { scroll-margin-top: 64px; }
+.sec-head .btn.sm { min-height: 34px; padding: 0 12px; }
+
+/* Bills, goals, lend & borrow rows */
+.rec-row, .loan-row, .goal-row { display: grid; gap: 6px; padding: 12px 2px; border-bottom: 1px solid var(--rule); }
+.rec-row:first-child, .loan-row:first-child, .goal-row:first-child { border-top: 1px solid var(--rule); }
+.row-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.row-name { font-weight: 600; font-size: 15px; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; color: inherit; text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+.row-sub { font-size: 13px; color: var(--muted); font-style: normal; }
+.row-act { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.row-act .btn { flex: none; min-height: 34px; padding: 0 12px; font-size: 13px; }
+.pill.paid { color: var(--credit); }
+.pill.due, .pill.muted { color: var(--muted); }
+.pill.soon { color: var(--warn); }
+.pill.late { color: var(--debit); }
+.loan-row.settled { opacity: .65; }
+
+/* Transfers */
+.amt.transfer { color: var(--accent); }
+.seg.three { grid-template-columns: repeat(3, 1fr); }
+.seg.small.four { grid-template-columns: repeat(4, 1fr); }
+.entry[data-type="transfer"] .amount input { color: var(--accent); }
+.entry[data-type="transfer"] .seg-btn[data-type="transfer"][aria-checked="true"] { color: var(--accent); }
+
+/* Category budgets */
+.cat-row { width: 100%; display: block; border: 0; background: none; padding: 0; text-align: left; cursor: pointer; color: inherit; font: inherit; }
+.cat-row .lim { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); }
+.cat-bar span.ok { background: var(--credit); opacity: 1; }
+.cat-bar span.tight { background: var(--warn); opacity: 1; }
+.cat-bar span.over { background: var(--debit); opacity: 1; }
+
+/* Insights */
+.ins { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ins li { display: grid; grid-template-columns: 104px 1fr; gap: 10px; font-size: 15px; align-items: baseline; }
+.ins li.empty { display: block; }
+.ins .k { font: 500 11px/1.3 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+/* Goals */
+.goal-bar { height: 10px; border-radius: 999px; background: var(--paper); overflow: hidden; }
+.goal-bar span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+
+/* Year report */
+.yr-nav { display: inline-flex; gap: 6px; }
+.iconbtn.sm { width: 36px; height: 36px; font-size: 18px; border-radius: 10px; }
+.iconbtn:disabled { opacity: .4; cursor: default; }
+.tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
+.tile { border: 1px solid var(--rule); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; }
+.tile .k { font: 500 11px/1.2 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.tile .v { font: 700 18px/1.2 var(--mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tile .v.pos { color: var(--credit); } .tile .v.neg { color: var(--debit); }
+.tbl-wrap { overflow-x: auto; }
+.yr-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.yr-table th { text-align: right; font: 500 11px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 6px 4px; border-bottom: 2px solid var(--ink); }
+.yr-table th:first-child, .yr-table td:first-child { text-align: left; }
+.yr-table td { text-align: right; padding: 8px 4px; border-bottom: 1px solid var(--rule); font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.yr-table tr.click { cursor: pointer; }
+.yr-table tr.click:hover td { background: var(--paper); }
+.yr-table tr.cur td { font-weight: 700; }
+.yr-table .pos { color: var(--credit); } .yr-table .neg { color: var(--debit); } .yr-table .nil { color: var(--muted); }
+
+/* Search */
+.search { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.search input { flex: 1; min-width: 0; min-height: 42px; padding: 8px 12px; font-size: 16px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); }
+.search input:focus { border-color: var(--accent); outline: none; }
+@media (max-width: 380px) { .ins li { grid-template-columns: 1fr; gap: 2px; } }
 
 .sheet-back { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; background: rgb(8 12 20 / .45); }
 .sheet { width: 100%; max-width: 560px; max-height: 92%; overflow-y: auto; background: var(--sheet); border-radius: 20px 20px 0 0; border: 1px solid var(--rule); border-bottom: 0; padding: 18px 16px calc(20px + env(safe-area-inset-bottom)); }
@@ -390,9 +469,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
     <div class="who">
       <span class="status" id="status"><span class="dot"></span><span id="status-text">Loading…</span></span>
       <span class="user" id="user-name"></span>
+      <button class="link" id="install" type="button" hidden>Install app</button>
       <button class="link" id="logout" type="button">Log out</button>
     </div>
   </header>
+  <nav class="jump" id="jump" aria-label="Jump to section">
+    <button type="button" data-to="sec-overview">Overview</button>
+    <button type="button" data-to="sec-bills">Bills</button>
+    <button type="button" data-to="sec-add">Add</button>
+    <button type="button" data-to="sec-accounts">Accounts</button>
+    <button type="button" data-to="sec-budgets">Budgets</button>
+    <button type="button" data-to="sec-goals">Goals</button>
+    <button type="button" data-to="sec-loans">Lend</button>
+    <button type="button" data-to="sec-reports">Reports</button>
+    <button type="button" data-to="sec-passbook">Passbook</button>
+  </nav>
   <div class="banner" id="banner" hidden><span id="banner-text"></span><button class="btn ghost sm" id="banner-retry" type="button">Try again</button></div>
 
   <nav class="monthbar" aria-label="Month">
@@ -402,7 +493,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   </nav>
   <button class="link today" id="today" type="button" hidden>Back to this month</button>
 
-  <section class="card hero" aria-labelledby="hero-label">
+  <section class="card hero" id="sec-overview" aria-labelledby="hero-label">
     <div class="hero-top">
       <span class="label" id="hero-label">Net so far this month</span>
       <span class="stamp" id="stamp"></span>
@@ -417,7 +508,16 @@ button, input, select, textarea { font: inherit; color: inherit; }
     <div class="budget" id="budget"></div>
   </section>
 
-  <section class="card" aria-labelledby="acct-h">
+  <section class="card" id="sec-bills" aria-labelledby="rec-h">
+    <div class="sec-head"><h2 id="rec-h">Bills &amp; salary</h2><button class="btn ghost sm" id="rec-add" type="button">+ Add</button></div>
+    <p class="hint-line" id="rec-sum"></p>
+    <div id="rec-list"></div>
+  </section>
+  <section class="card" id="sec-add" aria-labelledby="add-h">
+    <h2 id="add-h">Add an entry</h2>
+    <div id="add-slot"></div>
+  </section>
+  <section class="card" id="sec-accounts" aria-labelledby="acct-h">
     <div class="sec-head"><h2 id="acct-h">Accounts</h2><span class="count" id="accts-total"></span></div>
     <div class="accts" id="accts"></div>
     <div class="acct-foot">
@@ -425,19 +525,27 @@ button, input, select, textarea { font: inherit; color: inherit; }
       <button class="btn ghost sm" id="acct-add" type="button">+ Add account</button>
     </div>
   </section>
-
-  <section class="card" aria-labelledby="add-h">
-    <h2 id="add-h">Add an entry</h2>
-    <div id="add-slot"></div>
-  </section>
-
-  <section class="card" aria-labelledby="cats-h">
+  <section class="card" id="sec-budgets" aria-labelledby="cats-h">
     <div class="sec-head"><h2 id="cats-h">Where it went</h2><span class="count" id="cats-total"></span></div>
     <div class="cats" id="cats"></div>
     <p class="sources" id="sources"></p>
+    <div class="book-foot"><span class="hint-line">Tap a category to set a monthly limit.</span><button class="btn ghost sm" id="cb-add" type="button">+ Category budget</button></div>
   </section>
-
-  <section class="card" aria-labelledby="trend-h">
+  <section class="card" id="sec-insights" aria-labelledby="ins-h">
+    <div class="sec-head"><h2 id="ins-h">Insights</h2><span class="count" id="ins-vs"></span></div>
+    <ul class="ins" id="ins"></ul>
+  </section>
+  <section class="card" id="sec-goals" aria-labelledby="goal-h">
+    <div class="sec-head"><h2 id="goal-h">Savings goals</h2><button class="btn ghost sm" id="goal-add" type="button">+ New goal</button></div>
+    <div id="goal-list"></div>
+  </section>
+  <section class="card" id="sec-loans" aria-labelledby="loan-h">
+    <div class="sec-head"><h2 id="loan-h">Lend &amp; borrow</h2><button class="btn ghost sm" id="loan-add" type="button">+ Add</button></div>
+    <p class="b-text" id="loan-sum"></p>
+    <div id="loan-list"></div>
+    <button class="link" id="loan-toggle" type="button" hidden>Show settled</button>
+  </section>
+  <section class="card" id="sec-trend" aria-labelledby="trend-h">
     <div class="sec-head">
       <h2 id="trend-h">Last six months</h2>
       <span class="legend"><span><i class="sw incs"></i>Received</span><span><i class="sw exp"></i>Spent</span></span>
@@ -448,14 +556,25 @@ button, input, select, textarea { font: inherit; color: inherit; }
     </div>
     <p class="hint">Tap a month to open it.</p>
   </section>
-
-  <section class="card" aria-labelledby="book-h">
+  <section class="card" id="sec-reports" aria-labelledby="yr-h">
+    <div class="sec-head"><h2 id="yr-h">Year report</h2><span class="yr-nav"><button class="iconbtn sm" id="yr-prev" type="button" aria-label="Previous year">‹</button><button class="iconbtn sm" id="yr-next" type="button" aria-label="Next year">›</button></span></div>
+    <div class="tiles" id="yr-tiles"></div>
+    <div class="tbl-wrap"><table class="yr-table" id="yr-table"></table></div>
+    <p class="sources" id="yr-top"></p>
+    <div class="book-foot"><button class="btn ghost sm" id="yr-csv" type="button">Download year as CSV</button></div>
+  </section>
+  <section class="card" id="sec-passbook" aria-labelledby="book-h">
     <div class="sec-head"><h2 id="book-h">Passbook</h2><span class="count" id="book-count"></span></div>
-    <div class="book-tools">
-      <div class="seg small" id="filter" role="radiogroup" aria-label="Show">
+    <div class="search">
+      <input id="search" type="search" placeholder="Search all entries" aria-label="Search all entries by note, category, amount, account or month" autocomplete="off">
+      <button class="link" id="search-clear" type="button" hidden>Clear</button>
+    </div>
+    <div class="book-tools" id="book-tools">
+      <div class="seg small four" id="filter" role="radiogroup" aria-label="Show">
         <button type="button" class="seg-btn" role="radio" data-f="all" aria-checked="true">All</button>
         <button type="button" class="seg-btn" role="radio" data-f="expense" aria-checked="false">Spent</button>
         <button type="button" class="seg-btn" role="radio" data-f="income" aria-checked="false">Received</button>
+        <button type="button" class="seg-btn" role="radio" data-f="transfer" aria-checked="false">Transfers</button>
       </div>
       <select id="acct-filter" aria-label="Filter by account"></select>
     </div>
@@ -464,7 +583,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
     <div class="book-foot"><button class="btn ghost sm" id="csv" type="button">Download month as CSV</button></div>
   </section>
 
-  <footer class="foot">Saved to your account and synced across your devices. Tap any passbook line to edit or delete it. For safety, you're logged out after 5 minutes without activity.</footer>
+  <footer class="foot">Saved to your account and synced across your devices. Tap any passbook line to edit or delete it. For safety, you're logged out after 5 minutes without activity.<span id="ios-hint" hidden> On iPhone, tap Share, then Add to Home Screen to install it as an app.</span></footer>
 </div>
 
 <div class="sheet-back" id="sheet-back" hidden>
@@ -955,16 +1074,18 @@ button, input, select, textarea { font: inherit; color: inherit; }
   /* =====================================================
      TRACKER
      ===================================================== */
-  var S = { uid: null, username: "", txns: [], accounts: [], cats: { expense: [], income: [] }, budget: null, month: curYM(), filter: "all", acctFilter: "all", loaded: false, lastLoad: 0, pending: 0 };
-  var TX_COLS = "id,type,amount,category,method,note,date,created_at,account_id";
+  var S = { uid: null, username: "", txns: [], accounts: [], cats: { expense: [], income: [] }, recurring: [], catBudgets: [], loans: [], goals: [], search: "", year: new Date().getFullYear(), showSettled: false, budget: null, month: curYM(), filter: "all", acctFilter: "all", loaded: false, lastLoad: 0, pending: 0 };
+  var TX_COLS_BASE = "id,type,amount,category,method,note,date,created_at,account_id";
+  var TX_COLS = TX_COLS_BASE + ",to_account_id,recurring_id";
 
   function clean(row) {
     if (!row) return null;
-    var type = row.type === "income" ? "income" : row.type === "expense" ? "expense" : null;
+    var type = row.type === "income" || row.type === "expense" || row.type === "transfer" ? row.type : null;
     var amount = Number(row.amount);
     var date = typeof row.date === "string" ? row.date.slice(0, 10) : null;
     if (!type || !(amount > 0) || !date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-    return { id: String(row.id), type: type, amount: amount, date: date, category: String(row.category || "Other"), method: String(row.method || ""), note: String(row.note || ""), createdAt: String(row.created_at || ""), accountId: row.account_id ? String(row.account_id) : null };
+    return { id: String(row.id), type: type, amount: amount, date: date, category: String(row.category || "Other"), method: String(row.method || ""), note: String(row.note || ""), createdAt: String(row.created_at || ""), accountId: row.account_id ? String(row.account_id) : null,
+      toAccountId: row.to_account_id ? String(row.to_account_id) : null, recurringId: row.recurring_id ? String(row.recurring_id) : null };
   }
   function cleanAcct(row) {
     if (!row || !row.id) return null;
@@ -991,14 +1112,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
   function acctById(id) { for (var i = 0; i < S.accounts.length; i++) if (S.accounts[i].id === id) return S.accounts[i]; return null; }
   function acctNet(id) {
     var n = 0;
-    S.txns.forEach(function (t) { if (t.accountId === id) n += t.type === "income" ? t.amount : -t.amount; });
+    S.txns.forEach(function (t) { n += acctDelta(t, id); });
+    loanEvents(id).forEach(function (e) { n += e.delta; });
     return Math.round(n * 100) / 100;
   }
   function acctBal(a) { return Math.round((a.opening + acctNet(a.id)) * 100) / 100; }
   function monthTx(ym) { return S.txns.filter(function (t) { return t.date.slice(0, 7) === ym; }); }
   function sums(list) {
     var inc = 0, exp = 0;
-    list.forEach(function (t) { if (t.type === "income") inc += t.amount; else exp += t.amount; });
+    list.forEach(function (t) { if (t.type === "income") inc += t.amount; else if (t.type === "expense") exp += t.amount; });
     return { inc: inc, exp: exp, net: inc - exp };
   }
   function byDate(a, b) {
@@ -1015,10 +1137,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
   function showBanner(text) { $("banner-text").textContent = text || ""; $("banner").hidden = !text; }
 
   async function fetchAllTx() {
-    var all = [], from = 0, size = 1000;
+    var all = [], from = 0, size = 1000, cols = TX_COLS;
     for (;;) {
-      var r = await sb.from("transactions").select(TX_COLS)
+      var r = await sb.from("transactions").select(cols)
         .order("date", { ascending: true }).order("created_at", { ascending: true }).range(from, from + size - 1);
+      if (r.error && cols !== TX_COLS_BASE && /column|42703/i.test(String(r.error.message || "") + String(r.error.code || ""))) { cols = TX_COLS_BASE; all = []; from = 0; continue; }
       if (r.error) throw r.error;
       all = all.concat(r.data || []);
       if (!r.data || r.data.length < size) break;
@@ -1034,7 +1157,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
         sb.from("profiles").select("username,budget").eq("id", S.uid).maybeSingle(),
         fetchAllTx(),
         sb.from("accounts").select("id,name,account_last4,opening_balance,created_at").order("created_at", { ascending: true }),
-        sb.from("categories").select("id,type,name").order("created_at", { ascending: true })
+        sb.from("categories").select("id,type,name").order("created_at", { ascending: true }),
+        sb.from("recurring").select(REC_COLS).order("day_of_month", { ascending: true }),
+        sb.from("category_budgets").select(CB_COLS),
+        sb.from("loans").select(LOAN_COLS).order("date", { ascending: true }),
+        sb.from("goals").select(GOAL_COLS).order("created_at", { ascending: true })
       ]);
       if (res[2].error) throw res[2].error;
       var prof = res[0].data;
@@ -1044,6 +1171,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
       S.txns = res[1];
       S.accounts = (res[2].data || []).map(cleanAcct).filter(Boolean);
       setCats(res[3].error ? [] : res[3].data);
+      S.recurring = res[4].error ? [] : (res[4].data || []).map(cleanRec).filter(Boolean);
+      S.catBudgets = res[5].error ? [] : (res[5].data || []).map(cleanCB).filter(Boolean);
+      S.loans = res[6].error ? [] : (res[6].data || []).map(cleanLoan).filter(Boolean);
+      S.goals = res[7].error ? [] : (res[7].data || []).map(cleanGoal).filter(Boolean);
       addF.redrawCats();
       if (S.acctFilter !== "all" && S.acctFilter !== "none" && !acctById(S.acctFilter)) S.acctFilter = "all";
       addF.refreshAccounts();
@@ -1062,6 +1193,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
     S.email = user.email || "";
     S.username = (user.user_metadata && user.user_metadata.username) || (user.email || "").split("@")[0];
     S.txns = []; S.accounts = []; S.cats = { expense: [], income: [] }; S.budget = null; S.month = curYM(); S.acctFilter = "all"; S.loaded = false;
+    S.recurring = []; S.catBudgets = []; S.loans = []; S.goals = []; S.search = ""; S.year = new Date().getFullYear();
+    $("search").value = ""; $("search-clear").hidden = true;
     addF.refreshAccounts();
     $("auth").hidden = true; $("app").hidden = false;
     $("user-name").textContent = showUser(S.username);
@@ -1072,6 +1205,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   function resetApp() {
     hideIdleWarning();
     S.uid = null; S.txns = []; S.accounts = []; S.cats = { expense: [], income: [] }; S.budget = null; S.loaded = false;
+    S.recurring = []; S.catBudgets = []; S.loans = []; S.goals = []; S.search = "";
     closeSheet(); $("app").hidden = true;
   }
   document.addEventListener("visibilitychange", function () {
@@ -1088,6 +1222,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
   function saveTx(data, id) {
     return write(async function () {
       var body = { type: data.type, amount: data.amount, category: data.category, method: data.method, note: data.note, date: data.date, account_id: data.accountId || null };
+      body.to_account_id = data.type === "transfer" ? data.toAccountId : null;
+      if (data.recurringId !== undefined) body.recurring_id = data.recurringId || null;
       var r;
       if (id) {
         body.updated_at = new Date().toISOString();
@@ -1160,7 +1296,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
       var r = await sb.from("accounts").delete().eq("id", id);
       if (r.error) throw r.error;
       S.accounts = S.accounts.filter(function (a) { return a.id !== id; });
-      S.txns.forEach(function (t) { if (t.accountId === id) t.accountId = null; });
+      S.txns.forEach(function (t) { if (t.accountId === id) t.accountId = null; if (t.toAccountId === id) t.toAccountId = null; });
+      S.recurring.forEach(function (r) { if (r.accountId === id) r.accountId = null; });
+      S.loans.forEach(function (l) { if (l.accountId === id) l.accountId = null; });
       if (S.acctFilter === id) S.acctFilter = "all";
       if (recall("ml-last-acct") === id) store("ml-last-acct", null);
       addF.refreshAccounts();
@@ -1177,9 +1315,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
         '<button type="button" class="btn danger" id="' + p + '-del">Delete</button>' +
         '<button type="button" class="btn ghost" id="' + p + '-cancel">Cancel</button>';
     return '<form id="' + p + '-form" class="entry" novalidate data-type="expense">' +
-      '<div class="seg" role="radiogroup" aria-label="Entry type">' +
+      '<div class="seg three" role="radiogroup" aria-label="Entry type">' +
         '<button type="button" class="seg-btn" role="radio" data-type="expense" aria-checked="true">Spent</button>' +
         '<button type="button" class="seg-btn" role="radio" data-type="income" aria-checked="false">Received</button>' +
+        '<button type="button" class="seg-btn" role="radio" data-type="transfer" aria-checked="false">Transfer</button>' +
       '</div>' +
       '<label class="amount" for="' + p + '-amount"><span class="rupee" aria-hidden="true">\u20B9</span>' +
         '<input id="' + p + '-amount" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Amount in rupees"></label>' +
@@ -1189,6 +1328,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
         '<label class="field" for="' + p + '-method"><span id="' + p + '-via">Paid via</span><select id="' + p + '-method">' + opts + '</select></label>' +
       '</div>' +
       '<div class="field"><span id="' + p + '-acct-lbl">From account</span><div class="chips" id="' + p + '-acct" role="radiogroup" aria-labelledby="' + p + '-acct-lbl"></div></div>' +
+      '<div class="field" id="' + p + '-to-field" hidden><span id="' + p + '-to-lbl">To account</span><div class="chips" id="' + p + '-to" role="radiogroup" aria-labelledby="' + p + '-to-lbl"></div></div>' +
       '<label class="field" for="' + p + '-note"><span>Note <i>(optional)</i></span>' +
         '<input id="' + p + '-note" maxlength="120" autocomplete="off" placeholder="' + (mode === "add" ? "e.g. Lunch near office" : "") + '"></label>' +
       '<p class="form-msg" id="' + p + '-msg" role="status" aria-live="polite"></p>' +
@@ -1197,8 +1337,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
   function makeForm(p, mode) {
     var f = $(p + "-form"), amt = $(p + "-amount"), date = $(p + "-date"), method = $(p + "-method"),
         note = $(p + "-note"), out = $(p + "-msg"), save = $(p + "-save"), cats = $(p + "-cats"), via = $(p + "-via"),
-        acct = $(p + "-acct"), acctLbl = $(p + "-acct-lbl");
-    var type = "expense", cat = null, acctVal = "", acctInit = false;
+        acct = $(p + "-acct"), acctLbl = $(p + "-acct-lbl"), toBox = $(p + "-to"), toField = $(p + "-to-field"), methodField = method.closest(".field");
+    var type = "expense", cat = null, acctVal = "", acctInit = false, toVal = "";
     function drawAccts() {
       if (!S.accounts.length) {
         acct.innerHTML = '<span class="hint-line">Add an account in the Accounts section to choose where money goes in or out.</span>';
@@ -1209,8 +1349,19 @@ button, input, select, textarea { font: inherit; color: inherit; }
       }
       acct.innerHTML = S.accounts.map(function (a) {
         return chip(a.id, esc(a.name) + (a.last4 ? ' <span class="num">\u2022\u2022' + esc(a.last4) + "</span>" : ""));
-      }).join("") + chip("", "No account");
+      }).join("") + (type === "transfer" ? "" : chip("", "No account"));
     }
+    function drawTo() {
+      if (S.accounts.length < 2) { toBox.innerHTML = '<span class="hint-line">Add at least two accounts to move money between them.</span>'; return; }
+      if (toVal && (!acctById(toVal) || toVal === acctVal)) toVal = "";
+      toBox.innerHTML = S.accounts.filter(function (a) { return a.id !== acctVal; }).map(function (a) {
+        return '<button type="button" class="chip" role="radio" aria-checked="' + (a.id === toVal) + '" data-to="' + esc(a.id) + '">' + esc(a.name) + (a.last4 ? ' <span class="num">\u2022\u2022' + esc(a.last4) + "</span>" : "") + "</button>";
+      }).join("");
+    }
+    toBox.addEventListener("click", function (e) {
+      var b = e.target.closest(".chip"); if (!b) return;
+      toVal = b.dataset.to || ""; drawTo(); msg(out, "");
+    });
     function refreshAccounts(want) {
       var cur = want !== undefined ? want : acctVal;
       if (want === undefined && !acctInit && mode === "add") cur = recall("ml-last-acct") || "";
@@ -1220,14 +1371,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
         if (last !== "none") acctVal = last && acctById(last) ? last : (S.accounts.length === 1 ? S.accounts[0].id : "");
       }
       if (S.accounts.length) acctInit = true;
-      drawAccts();
+      drawAccts(); drawTo();
     }
     acct.addEventListener("click", function (e) {
       var b = e.target.closest(".chip"); if (!b) return;
       acctVal = b.dataset.a || "";
-      drawAccts();
+      if (acctVal === toVal) toVal = "";
+      drawAccts(); drawTo(); msg(out, "");
     });
-    function label() { return mode === "add" ? (type === "income" ? "Add income" : "Add expense") : "Save changes"; }
+    function label() { return mode === "add" ? (type === "income" ? "Add income" : type === "transfer" ? "Add transfer" : "Add expense") : "Save changes"; }
     function drawCats() {
       var list = catList(type);
       if (cat && list.indexOf(cat) < 0) list.push(cat);
@@ -1236,14 +1388,18 @@ button, input, select, textarea { font: inherit; color: inherit; }
       }).join("") + (mode === "add" ? '<button type="button" class="chip chip-add" data-add="1">+ Add</button>' : "");
     }
     function setType(t, userChange) {
-      type = t === "income" ? "income" : "expense";
-      if (userChange && cat && catList(type).indexOf(cat) < 0) cat = null;
+      type = t === "income" || t === "transfer" ? t : "expense";
+      if (userChange && cat && type !== "transfer" && catList(type).indexOf(cat) < 0) cat = null;
       f.dataset.type = type;
       f.querySelectorAll(".seg-btn").forEach(function (b) { b.setAttribute("aria-checked", String(b.dataset.type === type)); });
       via.textContent = type === "income" ? "Received via" : "Paid via";
       acctLbl.textContent = type === "income" ? "Into account" : "From account";
+      cats.hidden = type === "transfer";
+      if (methodField) methodField.hidden = type === "transfer";
+      toField.hidden = type !== "transfer";
+      if (type === "transfer" && !acctVal && S.accounts.length) acctVal = S.accounts[0].id;
       if (!save.disabled) save.textContent = label();
-      drawCats();
+      drawCats(); drawAccts(); drawTo();
     }
     function setMethod(m) {
       if (m && METHODS.indexOf(m) < 0) { var o = document.createElement("option"); o.textContent = m; method.appendChild(o); }
@@ -1275,11 +1431,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
         var a = parseAmt(amt.value);
         if (!(a > 0)) return { error: "Enter an amount, like 250 or 1200.50." };
         if (a >= 1e9) return { error: "That amount looks too large. Check the number." };
-        if (!cat) return { error: "Pick a category." };
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date.value)) return { error: "Pick a date." };
+        if (type === "transfer") {
+          if (S.accounts.length < 2) return { error: "Add at least two accounts in the Accounts section first." };
+          if (!acctVal) return { error: "Pick the account the money leaves." };
+          if (!toVal || toVal === acctVal) return { error: "Pick a different account for the money to go into." };
+          return { data: { type: "transfer", amount: a, category: "Transfer", method: "Transfer", note: note.value.trim().slice(0, 120), date: date.value, accountId: acctVal, toAccountId: toVal } };
+        }
+        if (!cat) return { error: "Pick a category." };
         return { data: { type: type, amount: a, category: cat, method: method.value, note: note.value.trim().slice(0, 120), date: date.value, accountId: acctVal || null } };
       },
-      load: function (t) { cat = t.category; setType(t.type); amt.value = String(t.amount); date.value = t.date; note.value = t.note; setMethod(t.method); refreshAccounts(t.accountId || ""); },
+      load: function (t) { cat = t.type === "transfer" ? null : t.category; toVal = t.toAccountId || ""; acctVal = t.accountId || ""; setType(t.type); amt.value = String(t.amount); date.value = t.date; note.value = t.note; if (t.type !== "transfer") setMethod(t.method); refreshAccounts(t.accountId || ""); },
       reset: function () { amt.value = ""; note.value = ""; cat = null; drawCats(); msg(out, ""); }
     };
   }
@@ -1342,14 +1504,25 @@ button, input, select, textarea { font: inherit; color: inherit; }
   function renderBreakdown() {
     var list = monthTx(S.month), by = {}, tot = 0;
     list.forEach(function (t) { if (t.type === "expense") { by[t.category] = (by[t.category] || 0) + t.amount; tot += t.amount; } });
-    var rows = Object.keys(by).map(function (k) { return [k, by[k]]; }).sort(function (a, b) { return b[1] - a[1]; });
+    S.catBudgets.forEach(function (b) { if (!(b.category in by)) by[b.category] = 0; });
+    var rows = Object.keys(by).map(function (k) { return [k, by[k]]; }).sort(function (a, b) { return b[1] - a[1] || a[0].localeCompare(b[0]); });
     $("cats-total").textContent = tot ? inr(tot) + " spent" : "";
-    if (!rows.length) $("cats").innerHTML = '<p class="empty">No spending logged for ' + esc(ymLong(S.month)) + ".</p>";
+    if (!rows.length) $("cats").innerHTML = '<p class="empty">No spending logged for ' + esc(ymLong(S.month)) + ". Set limits like Food ₹8,000 with + Category budget.</p>";
     else {
-      var max = rows[0][1];
+      var max = Math.max.apply(null, rows.map(function (r) { return r[1]; })) || 1;
       $("cats").innerHTML = rows.map(function (r) {
-        return '<div class="cat-row"><div class="cat-top"><span>' + esc(r[0]) + '</span><span class="num">' + inr(r[1]) + "<em>" + Math.round(r[1] / tot * 100) + "%</em></span></div>" +
-          '<div class="cat-bar"><span style="width:' + (r[1] / max * 100).toFixed(1) + '%"></span></div></div>';
+        var cb = cbFor(r[0]), w, cls = "", right, lim = "";
+        if (cb) {
+          var pr = r[1] / cb.amount;
+          w = Math.min(100, pr * 100); cls = pr > 1 ? "over" : pr > 0.85 ? "tight" : "ok";
+          right = inr(r[1]) + "<em>of " + inr(cb.amount) + "</em>";
+          lim = pr > 1 ? inr(r[1] - cb.amount) + " over the limit" : inr(cb.amount - r[1]) + " left this month";
+        } else {
+          w = r[1] / max * 100;
+          right = inr(r[1]) + "<em>" + (tot ? Math.round(r[1] / tot * 100) : 0) + "%</em>";
+        }
+        return '<button type="button" class="cat-row" data-cb="' + esc(r[0]) + '"><span class="cat-top"><span>' + esc(r[0]) + '</span><span class="num">' + right + "</span></span>" +
+          '<span class="cat-bar" style="display:block"><span class="' + cls + '" style="width:' + w.toFixed(1) + '%"></span></span>' + (lim ? '<span class="lim">' + lim + "</span>" : "") + "</button>";
       }).join("");
     }
     var ib = {};
@@ -1385,37 +1558,83 @@ button, input, select, textarea { font: inherit; color: inherit; }
     svg.innerHTML = g;
     $("trend-empty").hidden = mx > 0;
   }
+  function txRowHTML(t, af, balText) {
+    var a = t.accountId ? acctById(t.accountId) : null, b = t.toAccountId ? acctById(t.toAccountId) : null, amtHTML, cat = t.category, sub;
+    if (t.type === "transfer") {
+      cat = "Transfer";
+      sub = [t.note, (a ? acctLabel(a) : "Deleted account") + " → " + (b ? acctLabel(b) : "Deleted account")].filter(Boolean).join(" · ");
+      amtHTML = '<span class="amt transfer">' + (af ? (t.toAccountId === af ? "+" : MINUS) : "⇄ ") + inr(t.amount) + "</span>";
+    } else {
+      sub = [t.note, a && !af ? acctLabel(a) : "", t.method, t.recurringId ? "Monthly" : ""].filter(Boolean).join(" · ");
+      amtHTML = '<span class="amt ' + t.type + '">' + (t.type === "income" ? "+" : MINUS) + inr(t.amount) + "</span>";
+    }
+    return '<button class="tx" type="button" data-id="' + esc(t.id) + '"><span class="tx-main"><span class="tx-cat">' + esc(cat) + "</span>" +
+      (sub ? '<span class="tx-sub">' + esc(sub) + "</span>" : "") + '</span><span class="tx-amt">' + amtHTML + (balText ? '<span class="bal">' + balText + "</span>" : "") + "</span></button>";
+  }
+  function loanRowHTML(ev, balText) {
+    return '<button class="tx loan" type="button" data-loan="' + esc(ev.loan.id) + '"><span class="tx-main"><span class="tx-cat">' + esc(ev.label) + '</span><span class="tx-sub">Lend &amp; borrow</span></span>' +
+      '<span class="tx-amt"><span class="amt ' + (ev.delta > 0 ? "income" : "expense") + '">' + (ev.delta > 0 ? "+" : MINUS) + inr(Math.abs(ev.delta)) + '</span><span class="bal">' + balText + "</span></span></button>";
+  }
   function renderBook() {
+    var searching = !!S.search;
+    $("book-tools").hidden = searching;
+    if (searching) { renderSearch(); return; }
     var af = S.acctFilter, oneAcct = af !== "all" && af !== "none" ? acctById(af) : null;
-    function inAcct(t) { return af === "all" ? true : af === "none" ? !t.accountId : t.accountId === af; }
-    var list = monthTx(S.month).filter(inAcct).sort(byDate), balOf = {}, dayNet = {};
+    function inAcct(t) { return af === "all" ? true : af === "none" ? !t.accountId && !t.toAccountId : t.accountId === af || t.toAccountId === af; }
+    var balOf = {}, dayNet = {}, events;
     if (oneAcct) {
-      /* Real account balance after each entry: opening balance + every linked entry up to it, across all months */
+      /* Real account balance after each line: opening balance + everything linked to it, across all months */
+      var all = S.txns.filter(inAcct).map(function (t) { return { kind: "tx", t: t, id: t.id, date: t.date, createdAt: t.createdAt, delta: acctDelta(t, af) }; }).concat(loanEvents(af));
+      all.sort(byDate);
       var run = oneAcct.opening;
-      S.txns.filter(function (t) { return t.accountId === oneAcct.id; }).sort(byDate).forEach(function (t) {
-        run += t.type === "income" ? t.amount : -t.amount; balOf[t.id] = run;
-      });
+      all.forEach(function (e) { run += e.delta; balOf[e.id] = run; });
+      events = all.filter(function (e) { return e.date.slice(0, 7) === S.month; });
+      events.forEach(function (e) { dayNet[e.date] = (dayNet[e.date] || 0) + e.delta; });
     } else {
       var r2 = 0;
-      list.forEach(function (t) { r2 += t.type === "income" ? t.amount : -t.amount; balOf[t.id] = r2; });
+      events = monthTx(S.month).filter(inAcct).sort(byDate).map(function (t) {
+        r2 += flowOf(t); balOf[t.id] = r2; dayNet[t.date] = (dayNet[t.date] || 0) + flowOf(t);
+        return { kind: "tx", t: t, id: t.id, date: t.date, createdAt: t.createdAt };
+      });
     }
-    list.forEach(function (t) { dayNet[t.date] = (dayNet[t.date] || 0) + (t.type === "income" ? t.amount : -t.amount); });
-    var shown = list.filter(function (t) { return S.filter === "all" || t.type === S.filter; }).reverse();
-    $("book-count").textContent = list.length ? list.length + (list.length === 1 ? " entry" : " entries") : "";
+    var shown = events.filter(function (e) { return S.filter === "all" || (e.kind === "tx" && e.t.type === S.filter); }).reverse();
+    var n = events.length;
+    $("book-count").textContent = n ? n + (n === 1 ? " entry" : " entries") : "";
     $("book-bal-head").textContent = oneAcct ? "Amount · Account balance" : "Amount · Month balance";
     if (!shown.length) {
-      $("book").innerHTML = '<p class="empty" style="padding-top:14px">' + (list.length ? "Nothing matches this filter." : !S.loaded ? "Loading…" : af !== "all" ? "No entries for this account in " + esc(ymLong(S.month)) + "." : "No entries for " + esc(ymLong(S.month)) + " yet. Add your first one above.") + "</p>";
+      $("book").innerHTML = '<p class="empty" style="padding-top:14px">' + (n ? "Nothing matches this filter." : !S.loaded ? "Loading…" : af !== "all" ? "No entries for this account in " + esc(ymLong(S.month)) + "." : "No entries for " + esc(ymLong(S.month)) + " yet. Add your first one above.") + "</p>";
       return;
     }
     var html = "", last = "";
-    shown.forEach(function (t) {
-      if (t.date !== last) { last = t.date; html += '<div class="day"><span>' + dayLabel(t.date) + '</span><span class="num">' + signed(dayNet[t.date]) + "</span></div>"; }
-      var a = t.accountId ? acctById(t.accountId) : null;
-      var sub = [t.note, a && !oneAcct ? acctLabel(a) : "", t.method].filter(Boolean).join(" · ");
-      html += '<button class="tx" type="button" data-id="' + esc(t.id) + '"><span class="tx-main"><span class="tx-cat">' + esc(t.category) + "</span>" +
-        (sub ? '<span class="tx-sub">' + esc(sub) + "</span>" : "") + '</span><span class="tx-amt"><span class="amt ' + t.type + '">' +
-        (t.type === "income" ? "+" : MINUS) + inr(t.amount) + '</span><span class="bal">bal ' + bal(balOf[t.id]) + "</span></span></button>";
+    shown.forEach(function (e) {
+      if (e.date !== last) { last = e.date; html += '<div class="day"><span>' + dayLabel(e.date) + '</span><span class="num">' + signed(dayNet[e.date] || 0) + "</span></div>"; }
+      var bt = "bal " + bal(balOf[e.id]);
+      html += e.kind === "loan" ? loanRowHTML(e, bt) : txRowHTML(e.t, oneAcct ? af : null, bt);
     });
+    $("book").innerHTML = html;
+  }
+  function searchHay(t) {
+    var a = t.accountId ? acctById(t.accountId) : null, b = t.toAccountId ? acctById(t.toAccountId) : null;
+    return [t.category, t.note, t.method, t.type === "income" ? "received income" : t.type === "expense" ? "spent expense" : "transfer moved",
+      a ? acctLabel(a) : "", b ? acctLabel(b) : "", t.date, dayLabel(t.date), MON_LONG[+t.date.slice(5, 7) - 1], t.date.slice(0, 4),
+      String(t.amount), nf0.format(t.amount)].join(" ").toLowerCase().replace(/,/g, "");
+  }
+  function searchMatches(q) {
+    var toks = q.toLowerCase().replace(/[₹,]/g, "").split(/\s+/).filter(Boolean);
+    return S.txns.filter(function (t) { var h = searchHay(t); return toks.every(function (k) { return h.indexOf(k) >= 0; }); });
+  }
+  function renderSearch() {
+    var res = searchMatches(S.search).sort(byDate).reverse(), inc = 0, exp = 0;
+    res.forEach(function (t) { if (t.type === "income") inc += t.amount; else if (t.type === "expense") exp += t.amount; });
+    $("book-count").textContent = res.length + (res.length === 1 ? " match" : " matches") + (exp ? " · " + inr(exp) + " spent" : "") + (inc ? " · " + inr(inc) + " received" : "");
+    $("book-bal-head").textContent = "Amount · Month";
+    if (!res.length) { $("book").innerHTML = '<p class="empty" style="padding-top:14px">No entries match “' + esc(S.search) + "”.</p>"; return; }
+    var html = "", last = "", cap = res.slice(0, 300);
+    cap.forEach(function (t) {
+      if (t.date !== last) { last = t.date; html += '<div class="day"><span>' + dayLabel(t.date) + " " + t.date.slice(0, 4) + "</span><span></span></div>"; }
+      html += txRowHTML(t, null, ymShort(t.date.slice(0, 7)) + " " + t.date.slice(0, 4));
+    });
+    if (res.length > cap.length) html += '<p class="empty" style="padding-top:12px">Showing the latest 300. Add another word to narrow it down.</p>';
     $("book").innerHTML = html;
   }
   function renderAccounts() {
@@ -1429,13 +1648,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
       box.innerHTML = S.accounts.map(function (a) {
         var b = acctBal(a); total += b;
         var n = 0;
-        S.txns.forEach(function (t) { if (t.accountId === a.id && t.date.slice(0, 7) === ym) n++; });
+        S.txns.forEach(function (t) { if ((t.accountId === a.id || t.toAccountId === a.id) && t.date.slice(0, 7) === ym) n++; });
         return '<button class="acct" type="button" data-id="' + esc(a.id) + '"><span class="acct-main"><span class="acct-name">' + esc(a.name) + "</span>" +
           '<span class="acct-sub">' + (a.last4 ? 'A/c <span class="num">\u2022\u2022' + esc(a.last4) + "</span> \u00B7 " : "") + (n ? n + (n === 1 ? " entry" : " entries") + " in " + ymShort(ym) : "No entries in " + ymShort(ym)) + "</span></span>" +
           '<span class="acct-bal' + (b < 0 ? " neg" : "") + '">' + bal(b) + "</span></button>";
       }).join("");
       $("accts-total").textContent = bal(total) + " total";
-      var unlinked = monthTx(ym).filter(function (t) { return !t.accountId; }).length;
+      var unlinked = monthTx(ym).filter(function (t) { return !t.accountId && t.type !== "transfer"; }).length;
       $("accts-hint").textContent = unlinked ? unlinked + (unlinked === 1 ? " entry" : " entries") + " this month not linked to an account" : "Tap an account to edit it";
     }
     var f = $("acct-filter"), cur = S.acctFilter;
@@ -1445,7 +1664,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
     f.value = cur === "all" || cur === "none" || acctById(cur) ? cur : "all";
     f.hidden = !S.accounts.length;
   }
-  function render() { renderTop(); renderHero(); renderBudget(); renderAccounts(); renderBreakdown(); renderTrend(); renderBook(); }
+  function render() {
+    renderTop(); renderHero(); renderBudget(); renderRecurring(); renderAccounts(); renderBreakdown(); renderInsights();
+    renderGoals(); renderLoans(); renderTrend(); renderYear(); renderBook();
+  }
 
   /* ---------- Sheet & toast ---------- */
   var lastFocus = null;
@@ -1481,7 +1703,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
       store("ml-last-acct", v.data.accountId || "none");
       addF.reset();
       var where = v.data.date.slice(0, 7) !== S.month ? " in " + ymLong(v.data.date.slice(0, 7)) : "";
-      toast("Saved " + (v.data.type === "income" ? "+" : MINUS) + inr(v.data.amount) + " \u00B7 " + v.data.category + where);
+      if (v.data.type === "transfer") toast("Moved " + inr(v.data.amount) + " \u00B7 " + acctLabel(acctById(v.data.accountId)) + " \u2192 " + acctLabel(acctById(v.data.toAccountId)) + where);
+      else toast("Saved " + (v.data.type === "income" ? "+" : MINUS) + inr(v.data.amount) + " \u00B7 " + v.data.category + where);
     } catch (err) { addF.showMsg(dataErr(err), true); }
     finally { addF.setBusy(false); }
   });
@@ -1497,7 +1720,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
       var v = ef.values();
       if (v.error) { ef.showMsg(v.error, true); return; }
       ef.setBusy(true);
-      try { await saveTx(v.data, t.id); closeSheet(); toast("Entry updated"); }
+      try { v.data.recurringId = t.recurringId || null; await saveTx(v.data, t.id); closeSheet(); toast("Entry updated"); }
       catch (err) { ef.showMsg(dataErr(err), true); ef.setBusy(false); }
     });
     var del = $("ed-del"), armed = false, armT;
@@ -1539,19 +1762,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
     if (typeof v === "string" && /^[=+\-@]/.test(s)) s = "'" + s;
     return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   }
-  $("csv").addEventListener("click", function () {
-    var list = monthTx(S.month).sort(byDate);
-    if (!list.length) { toast("No entries in " + ymLong(S.month) + " to download"); return; }
-    var rows = [["Date", "Type", "Category", "Amount (INR)", "Account", "Method", "Note"]].concat(list.map(function (t) {
-      var a = t.accountId ? acctById(t.accountId) : null;
-      return [t.date, t.type === "income" ? "Income" : "Expense", t.category, t.amount, a ? acctLabel(a) : "", t.method, t.note];
+  function downloadCSV(list, filename, emptyMsg) {
+    if (!list.length) { toast(emptyMsg); return; }
+    var rows = [["Date", "Type", "Category", "Amount (INR)", "Account", "To account", "Method", "Note"]].concat(list.map(function (t) {
+      var a = t.accountId ? acctById(t.accountId) : null, b = t.toAccountId ? acctById(t.toAccountId) : null;
+      return [t.date, t.type === "income" ? "Income" : t.type === "expense" ? "Expense" : "Transfer", t.category, t.amount, a ? acctLabel(a) : "", b ? acctLabel(b) : "", t.method, t.note];
     }));
-    var csv = "\uFEFF" + rows.map(function (r) { return r.map(csvCell).join(","); }).join("\r\n");
+    var csv = "﻿" + rows.map(function (r) { return r.map(csvCell).join(","); }).join("\r\n");
     var url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    var a = document.createElement("a");
-    a.href = url; a.download = "money-log-" + S.month + ".csv";
-    document.body.appendChild(a); a.click(); a.remove();
+    var link = document.createElement("a");
+    link.href = url; link.download = filename;
+    document.body.appendChild(link); link.click(); link.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+  $("csv").addEventListener("click", function () {
+    downloadCSV(monthTx(S.month).sort(byDate), "money-log-" + S.month + ".csv", "No entries in " + ymLong(S.month) + " to download");
   });
   function openCategory(type, onAdded) {
     var word = type === "income" ? "Received" : "Spent";
@@ -1668,13 +1893,557 @@ button, input, select, textarea { font: inherit; color: inherit; }
   $("acct-add").addEventListener("click", function () { openAccount(null); });
   $("accts").addEventListener("click", function (e) { var b = e.target.closest(".acct"); if (b) openAccount(b.dataset.id); });
   $("acct-filter").addEventListener("change", function () { S.acctFilter = this.value; renderBook(); });
-  $("book").addEventListener("click", function (e) { var b = e.target.closest(".tx"); if (b) openEdit(b.dataset.id); });
+  $("book").addEventListener("click", function (e) {
+    var b = e.target.closest(".tx"); if (!b) return;
+    if (b.dataset.loan) openLoan(b.dataset.loan); else openEdit(b.dataset.id);
+  });
   $("filter").addEventListener("click", function (e) {
     var b = e.target.closest(".seg-btn"); if (!b) return;
     S.filter = b.dataset.f;
     $("filter").querySelectorAll(".seg-btn").forEach(function (x) { x.setAttribute("aria-checked", String(x === b)); });
     renderBook();
   });
+  /* =====================================================
+     MORE FEATURES: transfers, bills & salary, category budgets, insights,
+     savings goals, lend & borrow, year report, search, section shortcuts
+     ===================================================== */
+  var REC_COLS = "id,type,name,amount,category,method,account_id,day_of_month,active,created_at",
+      CB_COLS = "id,category,amount",
+      LOAN_COLS = "id,direction,person,amount,date,due_date,note,account_id,settled,settled_on,created_at",
+      GOAL_COLS = "id,name,target,saved,target_date,created_at";
+
+  /* Money moving: income +, spending -, transfers don't change the month's totals */
+  function flowOf(t) { return t.type === "income" ? t.amount : t.type === "expense" ? -t.amount : 0; }
+  function acctDelta(t, id) {
+    if (t.type === "transfer") return (t.accountId === id ? -t.amount : 0) + (t.toAccountId === id ? t.amount : 0);
+    return t.accountId === id ? flowOf(t) : 0;
+  }
+  /* Lend & borrow linked to an account: money leaves/arrives on the date, and comes back when settled */
+  function loanEvents(id) {
+    var ev = [];
+    S.loans.forEach(function (l) {
+      if (l.accountId !== id) return;
+      var out = l.direction === "lent" ? -l.amount : l.amount;
+      ev.push({ kind: "loan", id: "L" + l.id + "a", loan: l, date: l.date, createdAt: l.createdAt, delta: out,
+        label: l.direction === "lent" ? "Lent to " + l.person : "Borrowed from " + l.person });
+      if (l.settled) ev.push({ kind: "loan", id: "L" + l.id + "b", loan: l, date: l.settledOn || l.date, createdAt: l.createdAt + "~", delta: -out,
+        label: l.direction === "lent" ? l.person + " paid you back" : "Paid back " + l.person });
+    });
+    return ev;
+  }
+
+  function isoOrNull(v) { return typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null; }
+  function cleanRec(r) {
+    if (!r || !r.id) return null;
+    var amt = Number(r.amount), d = parseInt(r.day_of_month, 10);
+    if (!(amt > 0) || !(d >= 1 && d <= 31)) return null;
+    return { id: String(r.id), type: r.type === "income" ? "income" : "expense", name: String(r.name || "Bill"), amount: amt,
+      category: String(r.category || "Other"), method: String(r.method || "UPI"), accountId: r.account_id ? String(r.account_id) : null,
+      day: d, active: r.active !== false, createdAt: String(r.created_at || "") };
+  }
+  function cleanCB(r) { var a = Number(r && r.amount); return r && r.id && a > 0 ? { id: String(r.id), category: String(r.category), amount: a } : null; }
+  function cleanLoan(r) {
+    var a = Number(r && r.amount);
+    if (!r || !r.id || !(a > 0) || !isoOrNull(r.date)) return null;
+    return { id: String(r.id), direction: r.direction === "borrowed" ? "borrowed" : "lent", person: String(r.person || "Someone"), amount: a,
+      date: isoOrNull(r.date), due: isoOrNull(r.due_date), note: String(r.note || ""), accountId: r.account_id ? String(r.account_id) : null,
+      settled: !!r.settled, settledOn: isoOrNull(r.settled_on), createdAt: String(r.created_at || "") };
+  }
+  function cleanGoal(r) {
+    var t = Number(r && r.target), sv = Number(r && r.saved);
+    if (!r || !r.id || !(t > 0)) return null;
+    return { id: String(r.id), name: String(r.name || "Goal"), target: t, saved: sv > 0 ? sv : 0, date: isoOrNull(r.target_date), createdAt: String(r.created_at || "") };
+  }
+  function upsertLocal(arr, item) {
+    if (!item) return;
+    var i = arr.findIndex(function (x) { return x.id === item.id; });
+    if (i >= 0) arr[i] = item; else arr.push(item);
+  }
+  function dbSave(table, body, id, cols) {
+    return write(async function () {
+      var q = id ? sb.from(table).update(body).eq("id", id) : sb.from(table).insert(body);
+      var r = await q.select(cols).single();
+      if (r.error) throw r.error;
+      return r.data;
+    });
+  }
+  function dbDelete(table, id) {
+    return write(async function () {
+      var r = await sb.from(table).delete().eq("id", id);
+      if (r.error) throw r.error;
+    });
+  }
+  function featureErr(err) {
+    var m = String((err && err.message) || "");
+    return /relation|does not exist|schema cache|column/i.test(m) ? "This feature isn't set up in the database yet. Run upgrade-features.sql in Supabase." : dataErr(err);
+  }
+  function fmtDate(iso) {
+    var d = new Date(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10));
+    return d.getDate() + " " + MON[d.getMonth()] + (iso.slice(0, 4) !== todayISO().slice(0, 4) ? " " + iso.slice(0, 4) : "");
+  }
+  function daysBetween(a, b) {
+    var A = new Date(+a.slice(0, 4), +a.slice(5, 7) - 1, +a.slice(8, 10)), B = new Date(+b.slice(0, 4), +b.slice(5, 7) - 1, +b.slice(8, 10));
+    return Math.round((B - A) / 86400000);
+  }
+  function monthName(ym) { return MON_LONG[+ym.slice(5, 7) - 1]; }
+  function ordinal(n) { var sfx = ["th", "st", "nd", "rd"], v = n % 100; return n + (sfx[(v - 20) % 10] || sfx[v] || sfx[0]); }
+  function acctOptions(sel, allowNone, noneLabel) {
+    return (allowNone ? '<option value="">' + esc(noneLabel || "No account") + "</option>" : "") + S.accounts.map(function (a) {
+      return '<option value="' + esc(a.id) + '"' + (a.id === sel ? " selected" : "") + ">" + esc(acctLabel(a)) + "</option>";
+    }).join("");
+  }
+  /* Two-tap confirm for anything that removes data */
+  function armButton(btn, armedText, run) {
+    var armed = false, t, orig = btn.textContent;
+    btn.addEventListener("click", function () {
+      if (!armed) {
+        armed = true; btn.textContent = armedText; btn.classList.add("armed");
+        t = setTimeout(function () { armed = false; btn.textContent = orig; btn.classList.remove("armed"); }, 4000);
+        return;
+      }
+      clearTimeout(t); btn.disabled = true;
+      Promise.resolve(run()).then(function () { btn.disabled = false; });
+    });
+  }
+  function afterMoneyChange() { renderAccounts(); renderBook(); renderInsights(); }
+
+  /* ---------- Bills & salary (recurring) ---------- */
+  function recStatus(r, ym) {
+    var dd = Math.min(r.day, daysIn(ym)), due = ym + "-" + pad(dd), today = todayISO(), paid = null;
+    S.txns.forEach(function (t) { if (t.recurringId === r.id && t.date.slice(0, 7) === ym) paid = t; });
+    if (paid) return { due: due, paid: paid, cls: "paid", text: (r.type === "income" ? "Received " : "Paid ") + fmtDate(paid.date) };
+    var cur = curYM();
+    if (ym < cur) return { due: due, cls: "late", text: "Not marked " + (r.type === "income" ? "received" : "paid") };
+    if (ym > cur) return { due: due, cls: "due", text: "Due " + fmtDate(due) };
+    var diff = daysBetween(today, due);
+    if (diff < 0) return { due: due, cls: "late", text: "Overdue by " + -diff + (diff === -1 ? " day" : " days") };
+    if (diff === 0) return { due: due, cls: "soon", text: "Due today" };
+    return { due: due, cls: diff <= 3 ? "soon" : "due", text: "Due in " + diff + (diff === 1 ? " day" : " days") };
+  }
+  function renderRecurring() {
+    var ym = S.month, box = $("rec-list");
+    var list = S.recurring.filter(function (r) { return r.active; }).sort(function (a, b) { return a.day - b.day; });
+    if (!list.length) {
+      box.innerHTML = '<p class="empty">Add your salary, rent, EMIs and subscriptions once. Every month they show up here, and you mark them paid with one tap.</p>';
+      $("rec-sum").textContent = "";
+      return;
+    }
+    var dueOut = 0, paidOut = 0, dueIn = 0;
+    box.innerHTML = list.map(function (r) {
+      var st = recStatus(r, ym), a = r.accountId ? acctById(r.accountId) : null;
+      if (st.paid) { if (r.type === "expense") paidOut += st.paid.amount; }
+      else if (r.type === "expense") dueOut += r.amount; else dueIn += r.amount;
+      var sub = [r.category, a ? acctLabel(a) : "", "every month on the " + ordinal(r.day)].filter(Boolean).join(" · ");
+      return '<div class="rec-row"><div class="row-top"><button class="row-name" type="button" data-rec="' + esc(r.id) + '">' + esc(r.name) + "</button>" +
+        '<span class="amt ' + r.type + '">' + (r.type === "income" ? "+" : MINUS) + inr(r.amount) + "</span></div>" +
+        '<span class="row-sub">' + esc(sub) + "</span>" +
+        '<div class="row-act"><span class="pill ' + st.cls + '">' + esc(st.text) + "</span>" +
+        (st.paid ? '<button class="btn ghost" type="button" data-open-tx="' + esc(st.paid.id) + '">View entry</button>'
+                 : '<button class="btn primary" type="button" data-pay="' + esc(r.id) + '">' + (r.type === "income" ? "Mark received" : "Mark paid") + "</button>") +
+        "</div></div>";
+    }).join("");
+    var bits = [];
+    if (dueOut) bits.push(inr(dueOut) + " still to pay");
+    if (paidOut) bits.push(inr(paidOut) + " paid");
+    if (dueIn) bits.push(inr(dueIn) + " still to come in");
+    $("rec-sum").textContent = bits.length ? bits.join(" · ") + " in " + ymLong(ym) : "Everything for " + ymLong(ym) + " is done.";
+  }
+  function openPay(id) {
+    var r = S.recurring.filter(function (x) { return x.id === id; })[0]; if (!r) return;
+    var st = recStatus(r, S.month), today = todayISO();
+    var d0 = S.month === curYM() && st.due > today ? today : st.due, word = r.type === "income" ? "received" : "paid";
+    openSheet('<h3 class="sheet-title">Mark ' + esc(r.name) + " " + word + "</h3>" +
+      '<form id="pay-form" class="entry" novalidate data-type="' + r.type + '">' +
+      '<label class="amount" for="pay-amt"><span class="rupee" aria-hidden="true">₹</span><input id="pay-amt" inputmode="decimal" autocomplete="off" value="' + esc(String(r.amount)) + '" aria-label="Amount in rupees"></label>' +
+      '<div class="row2"><label class="field" for="pay-date"><span>Date</span><input type="date" id="pay-date" value="' + d0 + '"></label>' +
+      '<label class="field" for="pay-acct"><span>' + (r.type === "income" ? "Into account" : "From account") + '</span><select id="pay-acct">' + acctOptions(r.accountId, true) + "</select></label></div>" +
+      '<p class="form-msg">This adds a ' + (r.type === "income" ? "Received" : "Spent") + " entry under " + esc(r.category) + ". Change the amount if this month’s is different.</p>" +
+      '<p class="form-msg" id="pay-msg" role="status" aria-live="polite"></p>' +
+      '<div class="actions"><button class="btn primary" type="submit" id="pay-save">Mark ' + word + '</button><button class="btn ghost" type="button" id="pay-cancel">Cancel</button></div></form>', "Mark " + word);
+    $("pay-cancel").addEventListener("click", closeSheet);
+    $("pay-form").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var amount = parseAmt($("pay-amt").value), d = $("pay-date").value, out = $("pay-msg"), btn = $("pay-save");
+      if (!(amount > 0) || amount >= 1e9) return msg(out, "Enter the amount.", "err");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return msg(out, "Pick a date.", "err");
+      busy(btn, true, "Saving…");
+      try {
+        await saveTx({ type: r.type, amount: amount, category: r.category, method: r.method, note: r.name, date: d, accountId: $("pay-acct").value || null, recurringId: r.id });
+        closeSheet(); renderRecurring(); toast((r.type === "income" ? "Received " : "Paid ") + r.name + " · " + inr(amount));
+      } catch (err) { msg(out, featureErr(err), "err"); busy(btn, false); }
+    });
+  }
+  function openRec(id) {
+    var r = id ? S.recurring.filter(function (x) { return x.id === id; })[0] : null, type = r ? r.type : "expense";
+    function catOpts(t, sel) {
+      var l = catList(t); if (sel && l.indexOf(sel) < 0) l.push(sel);
+      return l.map(function (c) { return "<option" + (c === sel ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("");
+    }
+    openSheet('<h3 class="sheet-title">' + (r ? "Edit " + esc(r.name) : "New monthly bill or income") + "</h3>" +
+      '<form id="rc-form" class="entry" novalidate data-type="' + type + '">' +
+      '<div class="seg" role="radiogroup" aria-label="Type"><button type="button" class="seg-btn" role="radio" data-type="expense" aria-checked="' + (type === "expense") + '">Bill (spent)</button>' +
+      '<button type="button" class="seg-btn" role="radio" data-type="income" aria-checked="' + (type === "income") + '">Income</button></div>' +
+      '<label class="field" for="rc-name"><span>Name</span><input id="rc-name" maxlength="60" autocomplete="off" placeholder="e.g. House rent, Salary, Netflix, Bike EMI" value="' + (r ? esc(r.name) : "") + '"></label>' +
+      '<label class="amount" for="rc-amt"><span class="rupee" aria-hidden="true">₹</span><input id="rc-amt" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Amount in rupees" value="' + (r ? esc(String(r.amount)) : "") + '"></label>' +
+      '<div class="row2"><label class="field" for="rc-cat"><span>Category</span><select id="rc-cat">' + catOpts(type, r ? r.category : (type === "income" ? "Salary" : "Rent")) + "</select></label>" +
+      '<label class="field" for="rc-day"><span>Day of month</span><input id="rc-day" type="number" inputmode="numeric" min="1" max="31" value="' + (r ? r.day : new Date().getDate()) + '"></label></div>' +
+      '<div class="row2"><label class="field" for="rc-acct"><span>Account</span><select id="rc-acct">' + acctOptions(r ? r.accountId : null, true) + "</select></label>" +
+      '<label class="field" for="rc-method"><span>Via</span><select id="rc-method">' + METHODS.map(function (m) { return "<option" + (r && r.method === m ? " selected" : "") + ">" + m + "</option>"; }).join("") + "</select></label></div>" +
+      '<p class="form-msg">In shorter months, a day like the 31st falls on the last day.</p>' +
+      '<p class="form-msg" id="rc-msg" role="status" aria-live="polite"></p>' +
+      '<div class="actions"><button class="btn primary" type="submit" id="rc-save">' + (r ? "Save changes" : "Add") + "</button>" +
+      (r ? '<button class="btn danger" type="button" id="rc-del">Delete</button>' : "") + '<button class="btn ghost" type="button" id="rc-cancel">Cancel</button></div></form>', r ? "Edit monthly item" : "New monthly item");
+    var form = $("rc-form");
+    form.querySelectorAll(".seg-btn").forEach(function (b) {
+      b.addEventListener("click", function () {
+        type = b.dataset.type; form.dataset.type = type;
+        form.querySelectorAll(".seg-btn").forEach(function (x) { x.setAttribute("aria-checked", String(x === b)); });
+        $("rc-cat").innerHTML = catOpts(type, type === "income" ? "Salary" : "Rent");
+      });
+    });
+    if (!r) $("rc-name").focus({ preventScroll: true });
+    $("rc-cancel").addEventListener("click", closeSheet);
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var out = $("rc-msg"), name = $("rc-name").value.trim().replace(/\s+/g, " "), amount = parseAmt($("rc-amt").value), day = parseInt($("rc-day").value, 10);
+      if (!name) return msg(out, "Give it a name, like House rent.", "err");
+      if (!(amount > 0) || amount >= 1e9) return msg(out, "Enter the amount.", "err");
+      if (!(day >= 1 && day <= 31)) return msg(out, "Pick a day between 1 and 31.", "err");
+      var body = { type: type, name: name.slice(0, 60), amount: amount, category: $("rc-cat").value, day_of_month: day, account_id: $("rc-acct").value || null, method: $("rc-method").value, active: true };
+      busy($("rc-save"), true, "Saving…");
+      try {
+        upsertLocal(S.recurring, cleanRec(await dbSave("recurring", body, r && r.id, REC_COLS)));
+        closeSheet(); renderRecurring(); renderInsights(); toast((r ? "Updated " : "Added ") + name);
+      } catch (err) { msg(out, featureErr(err), "err"); busy($("rc-save"), false); }
+    });
+    if (r) armButton($("rc-del"), "Tap again to delete", async function () {
+      try {
+        await dbDelete("recurring", r.id);
+        S.recurring = S.recurring.filter(function (x) { return x.id !== r.id; });
+        S.txns.forEach(function (t) { if (t.recurringId === r.id) t.recurringId = null; });
+        closeSheet(); renderRecurring(); renderInsights(); toast("Deleted " + r.name + ". Past entries stay in your passbook.");
+      } catch (err) { msg($("rc-msg"), featureErr(err), "err"); }
+    });
+  }
+
+  /* ---------- Category budgets ---------- */
+  function cbFor(cat) { for (var i = 0; i < S.catBudgets.length; i++) if (S.catBudgets[i].category === cat) return S.catBudgets[i]; return null; }
+  function openCatBudget(cat) {
+    var cb = cat ? cbFor(cat) : null;
+    var free = catList("expense").filter(function (c) { return !cbFor(c); });
+    openSheet('<h3 class="sheet-title">' + (cat ? "Monthly limit: " + esc(cat) : "New category budget") + "</h3>" +
+      '<form id="cb-form" class="entry" novalidate data-type="expense">' +
+      (cat ? "" : '<label class="field" for="cb-cat"><span>Category</span><select id="cb-cat">' + free.map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("") + "</select></label>") +
+      '<label class="amount" for="cb-amt"><span class="rupee" aria-hidden="true">₹</span><input id="cb-amt" inputmode="decimal" autocomplete="off" placeholder="8000" aria-label="Monthly limit in rupees" value="' + (cb ? esc(String(cb.amount)) : "") + '"></label>' +
+      '<p class="form-msg">The bar turns amber at 85% of the limit and red when you go over.</p>' +
+      '<p class="form-msg" id="cb-msg" role="status" aria-live="polite"></p>' +
+      '<div class="actions"><button class="btn primary" type="submit" id="cb-save">Save limit</button>' +
+      (cb ? '<button class="btn danger" type="button" id="cb-del">Remove limit</button>' : "") + '<button class="btn ghost" type="button" id="cb-cancel">Cancel</button></div></form>', "Category budget");
+    $("cb-amt").focus({ preventScroll: true });
+    $("cb-cancel").addEventListener("click", closeSheet);
+    $("cb-form").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var c = cat || ($("cb-cat") && $("cb-cat").value), amount = parseAmt($("cb-amt").value), out = $("cb-msg");
+      if (!c) return msg(out, "Every category already has a limit.", "err");
+      if (!(amount > 0) || amount >= 1e9) return msg(out, "Enter a monthly limit, like 8000.", "err");
+      busy($("cb-save"), true, "Saving…");
+      try {
+        upsertLocal(S.catBudgets, cleanCB(await dbSave("category_budgets", { category: c, amount: amount }, cb && cb.id, CB_COLS)));
+        closeSheet(); renderBreakdown(); renderInsights(); toast(c + ": " + inr(amount) + " a month");
+      } catch (err) { msg(out, featureErr(err), "err"); busy($("cb-save"), false); }
+    });
+    if (cb) armButton($("cb-del"), "Tap again to remove", async function () {
+      try {
+        await dbDelete("category_budgets", cb.id);
+        S.catBudgets = S.catBudgets.filter(function (x) { return x.id !== cb.id; });
+        closeSheet(); renderBreakdown(); renderInsights(); toast("Removed the " + cb.category + " limit");
+      } catch (err) { msg($("cb-msg"), featureErr(err), "err"); }
+    });
+  }
+
+  /* ---------- Insights ---------- */
+  function renderInsights() {
+    var ym = S.month, prevYm = shiftYM(ym, -1), mt = monthTx(ym), cur = sums(mt), prev = sums(monthTx(prevYm)), items = [];
+    $("ins-vs").textContent = "vs " + ymShort(prevYm);
+    if (cur.exp > 0 && prev.exp > 0) {
+      var ch = (cur.exp - prev.exp) / prev.exp;
+      items.push(["Spending", Math.abs(ch) < 0.005 ? "About the same as " + monthName(prevYm)
+        : "Spent " + Math.round(Math.abs(ch) * 100) + "% " + (ch > 0 ? "more" : "less") + " than " + monthName(prevYm) + " (" + inr(Math.abs(cur.exp - prev.exp)) + (ch > 0 ? " more)" : " less)")]);
+    } else if (cur.exp > 0) items.push(["Spending", inr(cur.exp) + " so far. Nothing logged in " + monthName(prevYm) + " to compare with."]);
+    var by = {};
+    mt.forEach(function (t) { if (t.type === "expense") by[t.category] = (by[t.category] || 0) + t.amount; });
+    var top = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; })[0];
+    if (top) items.push(["Top category", top + ": " + inr(by[top]) + " (" + Math.round(by[top] / cur.exp * 100) + "% of spending)"]);
+    if (cur.exp > 0) {
+      var isCur = ym === curYM(), days = isCur ? new Date().getDate() : daysIn(ym), avg = cur.exp / days;
+      items.push(["Per day", inr(Math.round(avg)) + " a day on average" + (isCur && days < daysIn(ym) ? ". At this pace, about " + inr(Math.round(avg * daysIn(ym))) + " by month end" : "")]);
+    }
+    var big = null;
+    mt.forEach(function (t) { if (t.type === "expense" && (!big || t.amount > big.amount)) big = t; });
+    if (big) items.push(["Biggest spend", inr(big.amount) + " on " + big.category + (big.note ? " (" + big.note + ")" : "") + ", " + fmtDate(big.date)]);
+    if (cur.inc > 0) items.push(["Saved", cur.net >= 0 ? "You kept " + Math.round(cur.net / cur.inc * 100) + "% of what came in" : "Spent " + inr(-cur.net) + " more than came in"]);
+    var over = S.catBudgets.filter(function (b) { return (by[b.category] || 0) > b.amount; }).map(function (b) { return b.category; });
+    if (over.length) items.push(["Over limit", over.join(", ")]);
+    if (ym >= curYM()) {
+      var due = 0;
+      S.recurring.forEach(function (r) { if (r.active && r.type === "expense" && !recStatus(r, ym).paid) due += r.amount; });
+      if (due) items.push(["Bills due", inr(due) + " still to pay this month"]);
+    }
+    var owed = 0;
+    S.loans.forEach(function (l) { if (!l.settled && l.direction === "lent") owed += l.amount; });
+    if (owed) items.push(["Owed to you", inr(owed) + " from friends"]);
+    $("ins").innerHTML = items.length ? items.map(function (i) { return '<li><span class="k">' + esc(i[0]) + "</span><span>" + esc(i[1]) + "</span></li>"; }).join("")
+      : '<li class="empty">Add a few entries this month to see insights here.</li>';
+  }
+
+  /* ---------- Savings goals ---------- */
+  function renderGoals() {
+    var box = $("goal-list");
+    if (!S.goals.length) { box.innerHTML = '<p class="empty">Saving up for something? Add a goal with a target amount and date, like an emergency fund, a vacation or a new laptop.</p>'; return; }
+    box.innerHTML = S.goals.map(function (g) {
+      var pr = Math.min(1, g.saved / g.target), left = Math.max(0, g.target - g.saved), sub;
+      if (left <= 0) sub = "Goal reached";
+      else if (g.date) {
+        var days = daysBetween(todayISO(), g.date);
+        if (days <= 0) sub = inr(left) + " to go. The target date has passed";
+        else sub = inr(Math.ceil(left / Math.max(1, Math.ceil(days / 30.44)))) + " a month to reach it by " + fmtDate(g.date);
+      } else sub = inr(left) + " to go";
+      return '<div class="goal-row"><div class="row-top"><button class="row-name" type="button" data-goal="' + esc(g.id) + '">' + esc(g.name) + "</button>" +
+        '<span class="num">' + inr(g.saved) + ' <em class="row-sub">of ' + inr(g.target) + "</em></span></div>" +
+        '<div class="goal-bar"><span style="width:' + (pr * 100).toFixed(1) + '%"></span></div>' +
+        '<div class="row-act"><span class="row-sub">' + Math.round(pr * 100) + "% · " + esc(sub) + "</span>" +
+        (left > 0 ? '<button class="btn ghost" type="button" data-goal-add="' + esc(g.id) + '">+ Add money</button>' : "") + "</div></div>";
+    }).join("");
+  }
+  function openGoal(id) {
+    var g = id ? S.goals.filter(function (x) { return x.id === id; })[0] : null;
+    openSheet('<h3 class="sheet-title">' + (g ? "Edit goal" : "New savings goal") + "</h3>" +
+      '<form id="gl-form" class="entry" novalidate data-type="income">' +
+      '<label class="field" for="gl-name"><span>Goal</span><input id="gl-name" maxlength="60" autocomplete="off" placeholder="e.g. Emergency fund, Vacation, New laptop" value="' + (g ? esc(g.name) : "") + '"></label>' +
+      '<div class="row2"><label class="field" for="gl-target"><span>Target ₹</span><input id="gl-target" inputmode="decimal" autocomplete="off" placeholder="100000" value="' + (g ? esc(String(g.target)) : "") + '"></label>' +
+      '<label class="field" for="gl-saved"><span>Saved so far ₹</span><input id="gl-saved" inputmode="decimal" autocomplete="off" placeholder="0" value="' + (g ? esc(String(g.saved)) : "") + '"></label></div>' +
+      '<label class="field" for="gl-date"><span>Reach it by <i>(optional)</i></span><input type="date" id="gl-date" value="' + (g && g.date ? g.date : "") + '"></label>' +
+      '<p class="form-msg" id="gl-msg" role="status" aria-live="polite"></p>' +
+      '<div class="actions"><button class="btn primary" type="submit" id="gl-save">' + (g ? "Save changes" : "Create goal") + "</button>" +
+      (g ? '<button class="btn danger" type="button" id="gl-del">Delete</button>' : "") + '<button class="btn ghost" type="button" id="gl-cancel">Cancel</button></div></form>', "Savings goal");
+    if (!g) $("gl-name").focus({ preventScroll: true });
+    $("gl-cancel").addEventListener("click", closeSheet);
+    $("gl-form").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var out = $("gl-msg"), name = $("gl-name").value.trim().replace(/\s+/g, " "), target = parseAmt($("gl-target").value);
+      var savedRaw = $("gl-saved").value.trim(), saved = savedRaw ? parseAmt(savedRaw) : 0, d = $("gl-date").value;
+      if (!name) return msg(out, "Name your goal, like Emergency fund.", "err");
+      if (!(target > 0) || target >= 1e11) return msg(out, "Enter a target amount.", "err");
+      if (!(saved >= 0)) return msg(out, "Saved so far should be a number, like 15000.", "err");
+      busy($("gl-save"), true, "Saving…");
+      try {
+        upsertLocal(S.goals, cleanGoal(await dbSave("goals", { name: name.slice(0, 60), target: target, saved: saved, target_date: d || null }, g && g.id, GOAL_COLS)));
+        closeSheet(); renderGoals(); toast((g ? "Updated " : "Created ") + name);
+      } catch (err) { msg(out, featureErr(err), "err"); busy($("gl-save"), false); }
+    });
+    if (g) armButton($("gl-del"), "Tap again to delete", async function () {
+      try {
+        await dbDelete("goals", g.id);
+        S.goals = S.goals.filter(function (x) { return x.id !== g.id; });
+        closeSheet(); renderGoals(); toast("Deleted " + g.name);
+      } catch (err) { msg($("gl-msg"), featureErr(err), "err"); }
+    });
+  }
+  function openGoalAdd(id) {
+    var g = S.goals.filter(function (x) { return x.id === id; })[0]; if (!g) return;
+    openSheet('<h3 class="sheet-title">Add to ' + esc(g.name) + "</h3>" +
+      '<form id="ga-form" class="entry" novalidate data-type="income">' +
+      '<label class="amount" for="ga-amt"><span class="rupee" aria-hidden="true">₹</span><input id="ga-amt" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Amount in rupees"></label>' +
+      '<p class="form-msg">' + inr(g.saved) + " saved of " + inr(g.target) + ". To take money out, tap the goal’s name and change Saved so far.</p>" +
+      '<p class="form-msg" id="ga-msg" role="status" aria-live="polite"></p>' +
+      '<div class="actions"><button class="btn primary" type="submit" id="ga-save">Add money</button><button class="btn ghost" type="button" id="ga-cancel">Cancel</button></div></form>', "Add to goal");
+    $("ga-amt").focus({ preventScroll: true });
+    $("ga-cancel").addEventListener("click", closeSheet);
+    $("ga-form").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var amount = parseAmt($("ga-amt").value), out = $("ga-msg");
+      if (!(amount > 0) || amount >= 1e11) return msg(out, "Enter how much you're adding.", "err");
+      var next = Math.round((g.saved + amount) * 100) / 100;
+      busy($("ga-save"), true, "Saving…");
+      try {
+        var ng = cleanGoal(await dbSave("goals", { saved: next }, g.id, GOAL_COLS));
+        upsertLocal(S.goals, ng);
+        closeSheet(); renderGoals();
+        toast(next >= g.target ? "Goal reached: " + g.name : "Added " + inr(amount) + ". " + Math.round(Math.min(1, next / g.target) * 100) + "% of " + g.name);
+      } catch (err) { msg(out, featureErr(err), "err"); busy($("ga-save"), false); }
+    });
+  }
+
+  /* ---------- Lend & borrow ---------- */
+  function renderLoans() {
+    var owed = 0, owe = 0, open = S.loans.filter(function (l) { return !l.settled; }), settled = S.loans.filter(function (l) { return l.settled; });
+    open.forEach(function (l) { if (l.direction === "lent") owed += l.amount; else owe += l.amount; });
+    $("loan-sum").innerHTML = S.loans.length ? 'Friends owe you <strong class="num">' + inr(owed) + '</strong> · You owe <strong class="num">' + inr(owe) + "</strong>" : "";
+    var list = open.slice().sort(function (a, b) { return (a.due || "9999") < (b.due || "9999") ? -1 : (a.due || "9999") > (b.due || "9999") ? 1 : 0; });
+    if (S.showSettled) list = list.concat(settled.slice().sort(function (a, b) { return (a.settledOn || "") < (b.settledOn || "") ? 1 : -1; }));
+    $("loan-toggle").hidden = !settled.length;
+    $("loan-toggle").textContent = S.showSettled ? "Hide settled" : "Show settled (" + settled.length + ")";
+    if (!list.length) {
+      $("loan-list").innerHTML = '<p class="empty">' + (S.loans.length ? "Everything is settled." : "Lent money to a friend, or borrowed some? Add it here so nobody forgets.") + "</p>";
+      return;
+    }
+    var today = todayISO();
+    $("loan-list").innerHTML = list.map(function (l) {
+      var a = l.accountId ? acctById(l.accountId) : null, st;
+      if (l.settled) st = '<span class="pill paid">Settled ' + fmtDate(l.settledOn || l.date) + "</span>";
+      else if (l.due) {
+        var d = daysBetween(today, l.due);
+        st = '<span class="pill ' + (d < 0 ? "late" : d <= 3 ? "soon" : "due") + '">' + (d < 0 ? "Overdue by " + -d + (d === -1 ? " day" : " days") : d === 0 ? "Due today" : "Due " + fmtDate(l.due)) + "</span>";
+      } else st = '<span class="pill muted">No due date</span>';
+      var sub = [(l.direction === "lent" ? "You lent" : "You borrowed") + " on " + fmtDate(l.date), a ? acctLabel(a) : "", l.note].filter(Boolean).join(" · ");
+      return '<div class="loan-row' + (l.settled ? " settled" : "") + '"><div class="row-top"><button class="row-name" type="button" data-loan="' + esc(l.id) + '">' + esc(l.person) + "</button>" +
+        '<span class="amt ' + (l.direction === "lent" ? "income" : "expense") + '">' + inr(l.amount) + "</span></div>" +
+        '<span class="row-sub">' + esc(sub) + "</span>" +
+        '<div class="row-act">' + st + (l.settled ? "" : '<button class="btn ghost" type="button" data-settle="' + esc(l.id) + '">' + (l.direction === "lent" ? "Got it back" : "Paid it back") + "</button>") + "</div></div>";
+    }).join("");
+  }
+  function openLoan(id) {
+    var l = id ? S.loans.filter(function (x) { return x.id === id; })[0] : null, dir = l ? l.direction : "lent";
+    function acctText() { return (dir === "lent" ? "Paid from account" : "Received into account") + " <i>(optional)</i>"; }
+    openSheet('<h3 class="sheet-title">' + (l ? esc(l.person) : "Lend or borrow") + "</h3>" +
+      '<form id="ln-form" class="entry" novalidate data-type="' + (dir === "lent" ? "income" : "expense") + '">' +
+      '<div class="seg" role="radiogroup" aria-label="Direction"><button type="button" class="seg-btn" role="radio" data-dir="lent" aria-checked="' + (dir === "lent") + '">I lent</button>' +
+      '<button type="button" class="seg-btn" role="radio" data-dir="borrowed" aria-checked="' + (dir === "borrowed") + '">I borrowed</button></div>' +
+      '<label class="field" for="ln-person"><span>Person</span><input id="ln-person" maxlength="60" autocomplete="off" placeholder="Who?" value="' + (l ? esc(l.person) : "") + '"></label>' +
+      '<label class="amount" for="ln-amt"><span class="rupee" aria-hidden="true">₹</span><input id="ln-amt" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Amount in rupees" value="' + (l ? esc(String(l.amount)) : "") + '"></label>' +
+      '<div class="row2"><label class="field" for="ln-date"><span>Date</span><input type="date" id="ln-date" value="' + (l ? l.date : todayISO()) + '"></label>' +
+      '<label class="field" for="ln-due"><span>Pay back by <i>(optional)</i></span><input type="date" id="ln-due" value="' + (l && l.due ? l.due : "") + '"></label></div>' +
+      '<label class="field" for="ln-acct"><span id="ln-acct-lbl">' + acctText() + '</span><select id="ln-acct">' + acctOptions(l ? l.accountId : null, true, "Not linked to an account") + "</select></label>" +
+      '<label class="field" for="ln-note"><span>Note <i>(optional)</i></span><input id="ln-note" maxlength="200" autocomplete="off" value="' + (l ? esc(l.note) : "") + '"></label>' +
+      '<p class="form-msg">Picking an account updates its balance now, and again when it’s settled. It doesn’t count as income or spending.</p>' +
+      '<p class="form-msg" id="ln-msg" role="status" aria-live="polite"></p>' +
+      '<div class="actions"><button class="btn primary" type="submit" id="ln-save">' + (l ? "Save changes" : "Add") + "</button>" +
+      (l ? '<button class="btn ghost" type="button" id="ln-toggle">' + (l.settled ? "Mark as not settled" : "Mark settled") + '</button><button class="btn danger" type="button" id="ln-del">Delete</button>' : "") +
+      '<button class="btn ghost" type="button" id="ln-cancel">Cancel</button></div></form>', "Lend or borrow");
+    var form = $("ln-form");
+    form.querySelectorAll(".seg-btn").forEach(function (b) {
+      b.addEventListener("click", function () {
+        dir = b.dataset.dir; form.dataset.type = dir === "lent" ? "income" : "expense";
+        form.querySelectorAll(".seg-btn").forEach(function (x) { x.setAttribute("aria-checked", String(x === b)); });
+        $("ln-acct-lbl").innerHTML = acctText();
+      });
+    });
+    if (!l) $("ln-person").focus({ preventScroll: true });
+    $("ln-cancel").addEventListener("click", closeSheet);
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var out = $("ln-msg"), person = $("ln-person").value.trim().replace(/\s+/g, " "), amount = parseAmt($("ln-amt").value), d = $("ln-date").value, due = $("ln-due").value;
+      if (!person) return msg(out, "Who is it with?", "err");
+      if (!(amount > 0) || amount >= 1e9) return msg(out, "Enter the amount.", "err");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return msg(out, "Pick a date.", "err");
+      var body = { direction: dir, person: person.slice(0, 60), amount: amount, date: d, due_date: due || null, account_id: $("ln-acct").value || null, note: $("ln-note").value.trim().slice(0, 200) };
+      busy($("ln-save"), true, "Saving…");
+      try {
+        upsertLocal(S.loans, cleanLoan(await dbSave("loans", body, l && l.id, LOAN_COLS)));
+        closeSheet(); renderLoans(); afterMoneyChange(); toast((l ? "Updated " : "Added ") + (dir === "lent" ? "lent to " : "borrowed from ") + person);
+      } catch (err) { msg(out, featureErr(err), "err"); busy($("ln-save"), false); }
+    });
+    if (l) {
+      $("ln-toggle").addEventListener("click", async function () {
+        busy(this, true, "Saving…");
+        try {
+          upsertLocal(S.loans, cleanLoan(await dbSave("loans", { settled: !l.settled, settled_on: l.settled ? null : todayISO() }, l.id, LOAN_COLS)));
+          closeSheet(); renderLoans(); afterMoneyChange(); toast(l.settled ? "Marked " + l.person + " as not settled" : "Settled with " + l.person);
+        } catch (err) { msg($("ln-msg"), featureErr(err), "err"); busy(this, false); }
+      });
+      armButton($("ln-del"), "Tap again to delete", async function () {
+        try {
+          await dbDelete("loans", l.id);
+          S.loans = S.loans.filter(function (x) { return x.id !== l.id; });
+          closeSheet(); renderLoans(); afterMoneyChange(); toast("Deleted");
+        } catch (err) { msg($("ln-msg"), featureErr(err), "err"); }
+      });
+    }
+  }
+
+  /* ---------- Year report ---------- */
+  function renderYear() {
+    var y = S.year, yStr = String(y), nowY = new Date().getFullYear(), cur = curYM();
+    $("yr-h").textContent = yStr + " report";
+    $("yr-next").disabled = y >= nowY;
+    var inc = 0, exp = 0, rows = "", byCat = {};
+    for (var m = 1; m <= 12; m++) {
+      var ym = yStr + "-" + pad(m), list = monthTx(ym), s2 = sums(list), future = ym > cur;
+      inc += s2.inc; exp += s2.exp;
+      var empty = !list.length;
+      rows += '<tr' + (future ? "" : ' class="click' + (ym === S.month ? " cur" : "") + '" data-ym="' + ym + '"') + "><td>" + MON[m - 1] + "</td>" +
+        (empty ? '<td class="nil">–</td><td class="nil">–</td><td class="nil">–</td>'
+               : "<td>" + inr(s2.inc) + "</td><td>" + inr(s2.exp) + '</td><td class="' + (s2.net < 0 ? "neg" : "pos") + '">' + signed(s2.net) + "</td>") + "</tr>";
+    }
+    S.txns.forEach(function (t) { if (t.type === "expense" && t.date.slice(0, 4) === yStr) byCat[t.category] = (byCat[t.category] || 0) + t.amount; });
+    var net = inc - exp;
+    $("yr-tiles").innerHTML =
+      '<div class="tile"><span class="k">Received</span><span class="v">' + inr(inc) + "</span></div>" +
+      '<div class="tile"><span class="k">Spent</span><span class="v">' + inr(exp) + "</span></div>" +
+      '<div class="tile"><span class="k">Saved</span><span class="v ' + (net < 0 ? "neg" : "pos") + '">' + signed(net) + "</span></div>" +
+      '<div class="tile"><span class="k">Savings rate</span><span class="v">' + (inc > 0 ? Math.round(net / inc * 100) + "%" : "–") + "</span></div>";
+    $("yr-table").innerHTML = "<thead><tr><th>Month</th><th>In</th><th>Out</th><th>Net</th></tr></thead><tbody>" + rows + "</tbody>";
+    var top = Object.keys(byCat).sort(function (a, b) { return byCat[b] - byCat[a]; }).slice(0, 5);
+    $("yr-top").innerHTML = top.length ? "Top spending in " + yStr + ": " + top.map(function (c) { return esc(c) + ' <span class="num">' + inr(byCat[c]) + "</span>"; }).join(" · ") : "";
+  }
+
+  /* ---------- Wiring ---------- */
+  $("rec-add").addEventListener("click", function () { openRec(null); });
+  $("rec-list").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.rec) openRec(b.dataset.rec);
+    else if (b.dataset.pay) openPay(b.dataset.pay);
+    else if (b.dataset.openTx) openEdit(b.dataset.openTx);
+  });
+  $("cats").addEventListener("click", function (e) { var b = e.target.closest(".cat-row"); if (b) openCatBudget(b.dataset.cb); });
+  $("cb-add").addEventListener("click", function () { openCatBudget(null); });
+  $("goal-add").addEventListener("click", function () { openGoal(null); });
+  $("goal-list").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.goal) openGoal(b.dataset.goal); else if (b.dataset.goalAdd) openGoalAdd(b.dataset.goalAdd);
+  });
+  $("loan-add").addEventListener("click", function () { openLoan(null); });
+  $("loan-toggle").addEventListener("click", function () { S.showSettled = !S.showSettled; renderLoans(); });
+  $("loan-list").addEventListener("click", async function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.loan) { openLoan(b.dataset.loan); return; }
+    if (!b.dataset.settle) return;
+    if (!b.classList.contains("armed")) {
+      b.classList.add("armed", "danger"); b.classList.remove("ghost"); b.textContent = "Tap to confirm";
+      setTimeout(function () { if (document.contains(b) && !b.disabled) renderLoans(); }, 4000);
+      return;
+    }
+    var l = S.loans.filter(function (x) { return x.id === b.dataset.settle; })[0]; if (!l) return;
+    b.disabled = true;
+    try {
+      upsertLocal(S.loans, cleanLoan(await dbSave("loans", { settled: true, settled_on: todayISO() }, l.id, LOAN_COLS)));
+      renderLoans(); afterMoneyChange();
+      toast(l.direction === "lent" ? l.person + " paid you back " + inr(l.amount) : "You paid back " + l.person + " " + inr(l.amount));
+    } catch (err) { toast(featureErr(err)); renderLoans(); }
+  });
+  $("yr-prev").addEventListener("click", function () { S.year--; renderYear(); });
+  $("yr-next").addEventListener("click", function () { if (S.year < new Date().getFullYear()) { S.year++; renderYear(); } });
+  $("yr-table").addEventListener("click", function (e) {
+    var tr = e.target.closest("tr[data-ym]"); if (!tr) return;
+    goMonth(tr.dataset.ym);
+    var top = $("sec-overview"); if (top && top.scrollIntoView) top.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  $("yr-csv").addEventListener("click", function () {
+    var yStr = String(S.year);
+    downloadCSV(S.txns.filter(function (t) { return t.date.slice(0, 4) === yStr; }).sort(byDate), "money-log-" + yStr + ".csv", "No entries in " + yStr + " to download");
+  });
+  var searchT;
+  $("search").addEventListener("input", function () {
+    var v = this.value;
+    clearTimeout(searchT);
+    searchT = setTimeout(function () { S.search = v.trim(); $("search-clear").hidden = !S.search; renderBook(); }, 150);
+  });
+  $("search-clear").addEventListener("click", function () { $("search").value = ""; S.search = ""; this.hidden = true; renderBook(); $("search").focus(); });
+  $("jump").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-to]"); if (!b) return;
+    var el = $(b.dataset.to); if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
   function goMonth(m) { S.month = m; render(); }
   $("prev").addEventListener("click", function () { goMonth(shiftYM(S.month, -1)); });
   $("next").addEventListener("click", function () { goMonth(shiftYM(S.month, 1)); });
@@ -1686,6 +2455,26 @@ button, input, select, textarea { font: inherit; color: inherit; }
   });
   var rz;
   window.addEventListener("resize", function () { clearTimeout(rz); rz = setTimeout(function () { if (S.uid) renderTrend(); }, 120); });
+})();
+</script>
+<script>
+/* Install as a phone app: offline shell + install button */
+(function () {
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
+  }
+  var deferred = null, btn = document.getElementById("install");
+  window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); deferred = e; if (btn) btn.hidden = false; });
+  if (btn) btn.addEventListener("click", async function () {
+    if (!deferred) return;
+    deferred.prompt();
+    try { await deferred.userChoice; } catch (e) {}
+    deferred = null; btn.hidden = true;
+  });
+  window.addEventListener("appinstalled", function () { if (btn) btn.hidden = true; });
+  var standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone;
+  var hint = document.getElementById("ios-hint");
+  if (hint && /iphone|ipad|ipod/i.test(navigator.userAgent) && !standalone) hint.hidden = false;
 })();
 </script>
 </body>
