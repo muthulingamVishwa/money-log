@@ -266,6 +266,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .sheet .entry { margin-top: 12px; }
 .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); z-index: 60; transform: translate(-50%, 16px); opacity: 0; pointer-events: none; max-width: calc(100% - 32px); padding: 11px 16px; border-radius: 12px; background: var(--ink); color: var(--sheet); font-size: 14px; font-weight: 600; transition: opacity .2s ease, transform .2s ease; }
 .toast.on { opacity: 1; transform: translate(-50%, 0); }
+.idle { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 70; width: min(520px, calc(100% - 24px)); display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 14px; background: var(--ink); color: var(--sheet); box-shadow: 0 8px 24px rgb(0 0 0 / .25); font-size: 14px; font-weight: 600; }
+.idle .btn { flex: none; min-height: 38px; padding: 0 14px; font-size: 14px; background: var(--sheet); color: var(--ink); }
 
 @media (min-width: 560px) {
   .wrap { padding-top: 28px; }
@@ -462,13 +464,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
     <div class="book-foot"><button class="btn ghost sm" id="csv" type="button">Download month as CSV</button></div>
   </section>
 
-  <footer class="foot">Saved to your account and synced across your devices. Tap any passbook line to edit or delete it.</footer>
+  <footer class="foot">Saved to your account and synced across your devices. Tap any passbook line to edit or delete it. For safety, you're logged out after 5 minutes without activity.</footer>
 </div>
 
 <div class="sheet-back" id="sheet-back" hidden>
   <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Details"></div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="idle" id="idle" role="alertdialog" aria-live="assertive" aria-labelledby="idle-text" hidden>
+  <span id="idle-text">No activity. Logging out in 30s</span>
+  <button class="btn" id="idle-stay" type="button">Stay logged in</button>
+</div>
 
 <script>
 (function () {
@@ -863,7 +869,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
       }, 0);
       return;
     }
-    setTimeout(function () { handleSession(session); }, 0);
+    setTimeout(function () { handleSession(session, event); }, 0);
   });
   setTimeout(async function () {
     if (seenAuthEvent) return;
@@ -871,7 +877,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   }, 4000);
   var linkErr = (/error_description=([^&]+)/.exec(location.hash) || [])[1];
   if (linkErr) { try { history.replaceState(null, "", appUrl()); } catch (e) {} }
-  function handleSession(session) {
+  function handleSession(session, event) {
     if (A.recovering) return;
     if (linkErr && !(session && session.user)) {
       var why = decodeURIComponent(linkErr.replace(/\+/g, " "));
@@ -881,16 +887,70 @@ button, input, select, textarea { font: inherit; color: inherit; }
       return;
     }
     if (session && session.user) {
-      if (S.uid !== session.user.id) enterApp(session.user);
+      if (S.uid !== session.user.id) {
+        var restoring = !event || event === "INITIAL_SESSION";
+        if (restoring && idleExpired()) { idleLogout(session.user.email); return; }
+        markActive(true);
+        enterApp(session.user);
+      }
     } else {
       if (S.uid) resetApp();
       if ($("auth").hidden || A.view === "verify" && !A.pending) showAuth("login");
     }
   }
   $("logout").addEventListener("click", async function () {
-    try { await sb.auth.signOut(); } catch (e) {}
+    store(IDLE_KEY, null); hideIdleWarning();
+    try { await sb.auth.signOut({ scope: "local" }); } catch (e) {}
     resetApp(); showAuth("login");
   });
+
+  /* ---------- Auto logout after 5 minutes without activity ----------
+     The last-activity time is kept in this browser, so it is shared across tabs
+     and still counts while the phone is locked or the app is in the background. */
+  var IDLE_MS = 5 * 60 * 1000, WARN_MS = 30 * 1000, IDLE_KEY = "ml-last-active";
+  var lastActiveMem = 0, idleWarned = false, loggingOut = false;
+  var idleStore = (function () { try { localStorage.setItem("ml-probe", "1"); localStorage.removeItem("ml-probe"); return true; } catch (e) { return false; } })();
+  function lastActive() { return idleStore ? (Number(recall(IDLE_KEY)) || 0) : lastActiveMem; }
+  function markActive(force) {
+    var now = Date.now();
+    if (force || now - lastActive() > 3000) { lastActiveMem = now; store(IDLE_KEY, String(now)); }
+    if (idleWarned) hideIdleWarning();
+  }
+  function idleExpired() { var t = lastActive(); return t > 0 && Date.now() - t >= IDLE_MS; }
+  function showIdleWarning(secs) {
+    idleWarned = true;
+    $("idle-text").textContent = "No activity. Logging out in " + secs + "s";
+    $("idle").hidden = false;
+  }
+  function hideIdleWarning() { idleWarned = false; $("idle").hidden = true; }
+  async function idleLogout(email) {
+    if (loggingOut) return;
+    loggingOut = true;
+    hideIdleWarning();
+    var em = email || S.email || "";
+    store(IDLE_KEY, null); lastActiveMem = 0;
+    try { await sb.auth.signOut({ scope: "local" }); } catch (e) {}
+    resetApp(); showAuth("login");
+    if (em) $("li-email").value = em;
+    $("li-pass").value = "";
+    msg($("li-msg"), "You were logged out after 5 minutes without activity. Log in again to continue.", "err");
+    loggingOut = false;
+  }
+  function idleCheck() {
+    if (!S.uid || loggingOut) return;
+    if (S.pending) { markActive(true); return; }
+    var idle = Date.now() - lastActive();
+    if (idle >= IDLE_MS) idleLogout();
+    else if (idle >= IDLE_MS - WARN_MS) showIdleWarning(Math.max(1, Math.ceil((IDLE_MS - idle) / 1000)));
+    else if (idleWarned) hideIdleWarning();
+  }
+  ["pointerdown", "keydown", "wheel", "touchstart"].forEach(function (ev) {
+    document.addEventListener(ev, function () { if (S.uid) markActive(false); }, { passive: true, capture: true });
+  });
+  document.addEventListener("scroll", function () { if (S.uid) markActive(false); }, { passive: true });
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") idleCheck(); });
+  $("idle-stay").addEventListener("click", function () { markActive(true); });
+  setInterval(idleCheck, 1000);
 
   /* =====================================================
      TRACKER
@@ -999,6 +1059,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   function enterApp(user) {
     if (/access_token|error_description/.test(location.hash)) { try { history.replaceState(null, "", appUrl()); } catch (e) {} }
     S.uid = user.id;
+    S.email = user.email || "";
     S.username = (user.user_metadata && user.user_metadata.username) || (user.email || "").split("@")[0];
     S.txns = []; S.accounts = []; S.cats = { expense: [], income: [] }; S.budget = null; S.month = curYM(); S.acctFilter = "all"; S.loaded = false;
     addF.refreshAccounts();
@@ -1009,6 +1070,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
     loadData(false);
   }
   function resetApp() {
+    hideIdleWarning();
     S.uid = null; S.txns = []; S.accounts = []; S.cats = { expense: [], income: [] }; S.budget = null; S.loaded = false;
     closeSheet(); $("app").hidden = true;
   }
