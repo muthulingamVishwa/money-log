@@ -299,6 +299,17 @@ section.card { scroll-margin-top: 64px; }
 .person .loan-row, .person .loan-row:first-child { border: 0; border-left: 2px solid var(--rule); padding: 6px 0 6px 12px; margin-top: 8px; }
 .person .row-name { font-weight: 500; font-size: 14px; }
 .left-k { font: 500 12px/1 var(--mono); color: var(--muted); }
+.split-body { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--rule); border-radius: 12px; }
+.split-new { display: flex; gap: 8px; }
+.split-new input { flex: 1; }
+.split-new .btn { flex: none; }
+.split-rows { display: grid; }
+.split-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--rule); }
+.split-row:last-child { border-bottom: 0; }
+.split-row .nm { font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
+.split-amt { display: flex; align-items: center; gap: 6px; flex: none; font: 600 15px var(--mono); color: var(--muted); }
+.field .split-amt input { width: 118px; min-height: 40px; text-align: right; font: 600 16px var(--mono); color: var(--ink); }
+.hint-line .link { font-size: 13px; padding: 0; }
 .person-act { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 4px; }
 .person-act .btn { flex: none; min-height: 34px; padding: 0 14px; font-size: 13px; }
 .loan-done-h { margin: 16px 0 0; font: 500 11px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
@@ -1348,6 +1359,15 @@ section.card { scroll-margin-top: 64px; }
       '<div class="field" id="' + p + '-to-field" hidden><span id="' + p + '-to-lbl">To account</span><div class="chips" id="' + p + '-to" role="radiogroup" aria-labelledby="' + p + '-to-lbl"></div></div>' +
       '<label class="field" for="' + p + '-note"><span>Note <i>(optional)</i></span>' +
         '<input id="' + p + '-note" maxlength="120" autocomplete="off" placeholder="' + (mode === "add" ? "e.g. Lunch near office" : "") + '"></label>' +
+      (mode === "add" ? '<div class="field split-box" id="' + p + '-split-field"><span>Shared bill?</span>' +
+        '<div class="chips"><button type="button" class="chip chip-add" id="' + p + '-split-tog" aria-pressed="false">Split with others</button></div>' +
+        '<div class="split-body" id="' + p + '-split" hidden>' +
+          '<span class="hint-line">Enter the full bill above, then tap who shared it. Your share counts as your spending; each other share goes to Lend &amp; borrow as money to get back.</span>' +
+          '<div class="chips" id="' + p + '-split-people" role="group" aria-label="Who shared this bill"></div>' +
+          '<div class="split-new"><input id="' + p + '-split-name" maxlength="60" autocomplete="off" placeholder="Add a name" aria-label="Add a person to the split"><button type="button" class="btn ghost" id="' + p + '-split-addp">Add</button></div>' +
+          '<div class="split-rows" id="' + p + '-split-rows"></div>' +
+          '<p class="hint-line" id="' + p + '-split-sum" aria-live="polite"></p>' +
+        "</div></div>" : "") +
       '<p class="form-msg" id="' + p + '-msg" role="status" aria-live="polite"></p>' +
       '<div class="actions">' + actions + '</div></form>';
   }
@@ -1356,6 +1376,96 @@ section.card { scroll-margin-top: 64px; }
         note = $(p + "-note"), out = $(p + "-msg"), save = $(p + "-save"), cats = $(p + "-cats"), via = $(p + "-via"),
         acct = $(p + "-acct"), acctLbl = $(p + "-acct-lbl"), toBox = $(p + "-to"), toField = $(p + "-to-field"), methodField = method.closest(".field");
     var type = "expense", cat = null, acctVal = "", acctInit = false, toVal = "";
+    /* Split a bill: equal shares unless edited; "__me" is your own share */
+    var sp = mode === "add" ? { on: false, me: true, people: [], custom: false, amt: {} } : null,
+        spField = $(p + "-split-field"), spTog = $(p + "-split-tog"), spBody = $(p + "-split"), spPeople = $(p + "-split-people"),
+        spRows = $(p + "-split-rows"), spSum = $(p + "-split-sum"), spName = $(p + "-split-name");
+    function spKeys() { return (sp.me ? ["__me"] : []).concat(sp.people.map(loanKey)); }
+    function spLabel(k) { return k === "__me" ? "You" : sp.people.filter(function (n) { return loanKey(n) === k; })[0] || k; }
+    function spEqual() {
+      var total = parseAmt(amt.value), keys = spKeys(), paise = Math.round(total * 100);
+      sp.amt = {};
+      if (!(total > 0) || !keys.length) return;
+      var each = Math.floor(paise / keys.length), extra = paise - each * keys.length;
+      keys.forEach(function (k, i) { sp.amt[k] = (each + (i === 0 ? extra : 0)) / 100; });
+    }
+    function spDrawPeople() {
+      var names = loanPeople(), have = names.map(loanKey);
+      sp.people.forEach(function (n) { if (have.indexOf(loanKey(n)) < 0) names.push(n); });
+      var on = sp.people.map(loanKey);
+      spPeople.innerHTML = '<button type="button" class="chip" aria-pressed="' + sp.me + '" data-sp="__me">You</button>' +
+        names.map(function (n) { return '<button type="button" class="chip" aria-pressed="' + (on.indexOf(loanKey(n)) >= 0) + '" data-sp="' + esc(n) + '">' + esc(n) + "</button>"; }).join("");
+    }
+    function spSumText() {
+      var total = parseAmt(amt.value), keys = spKeys(), eq = ' · <button type="button" class="link" data-equal="1">Split equally</button>';
+      spSum.className = "hint-line";
+      if (!sp.people.length) { spSum.textContent = "Tap a name or add one: who else shared this?"; return; }
+      if (!(total > 0)) { spSum.textContent = "Enter the full bill amount at the top."; return; }
+      var sum = round2(keys.reduce(function (s2, k) { return s2 + (sp.amt[k] || 0); }, 0)), diff = round2(total - sum);
+      var mine = sp.me ? sp.amt.__me || 0 : 0;
+      if (Math.abs(diff) < 0.005) {
+        spSum.className = "hint-line ok";
+        spSum.innerHTML = esc("Your spending " + inr(mine) + " · to get back " + inr(round2(sum - mine))) + (sp.custom ? eq : "");
+      } else {
+        spSum.className = "hint-line bad";
+        spSum.innerHTML = esc(diff > 0 ? inr(diff) + " of the bill still to share out" : inr(-diff) + " more than the bill") + eq;
+      }
+    }
+    function spDrawRows() {
+      if (!sp.custom) spEqual();
+      spRows.innerHTML = spKeys().map(function (k) {
+        var v = sp.amt[k];
+        return '<div class="split-row"><span class="nm">' + esc(spLabel(k)) + '</span><label class="split-amt"><span aria-hidden="true">₹</span>' +
+          '<input data-k="' + esc(k) + '" inputmode="decimal" autocomplete="off" aria-label="' + esc(spLabel(k) + " share") + '" value="' + (v > 0 ? esc(String(v)) : "") + '"></label></div>';
+      }).join("");
+      spSumText();
+    }
+    function spRefill() {
+      if (!sp || !sp.on) return;
+      if (!sp.custom) { spEqual(); spRows.querySelectorAll("input").forEach(function (i) { var v = sp.amt[i.dataset.k]; i.value = v > 0 ? String(v) : ""; }); }
+      spSumText();
+    }
+    function spAddName() {
+      var n = spName.value.trim().replace(/\s+/g, " ").slice(0, 60);
+      if (!n) { spName.focus(); return; }
+      var known = loanPeople().filter(function (x) { return loanKey(x) === loanKey(n); })[0];
+      if (known) n = nicerName(known, n);
+      if (sp.people.map(loanKey).indexOf(loanKey(n)) < 0) sp.people.push(n);
+      spName.value = ""; sp.custom = false; spDrawPeople(); spDrawRows(); msg(out, "");
+    }
+    function spReset() {
+      if (!sp) return;
+      sp.on = false; sp.me = true; sp.people = []; sp.custom = false; sp.amt = {};
+      spTog.setAttribute("aria-pressed", "false"); spTog.textContent = "Split with others"; spBody.hidden = true; spName.value = "";
+    }
+    if (sp) {
+      spTog.addEventListener("click", function () {
+        sp.on = !sp.on;
+        spTog.setAttribute("aria-pressed", String(sp.on)); spTog.textContent = sp.on ? "Splitting · tap to stop" : "Split with others";
+        spBody.hidden = !sp.on;
+        if (sp.on) { spDrawPeople(); spDrawRows(); }
+        if (!save.disabled) save.textContent = label();
+        msg(out, "");
+      });
+      spPeople.addEventListener("click", function (e) {
+        var b = e.target.closest(".chip"); if (!b) return;
+        var k = b.dataset.sp;
+        if (k === "__me") sp.me = !sp.me;
+        else {
+          var at = sp.people.map(loanKey).indexOf(loanKey(k));
+          if (at >= 0) sp.people.splice(at, 1); else sp.people.push(k);
+        }
+        sp.custom = false; spDrawPeople(); spDrawRows(); msg(out, "");
+      });
+      $(p + "-split-addp").addEventListener("click", spAddName);
+      spName.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); spAddName(); } });
+      spRows.addEventListener("input", function (e) {
+        var i = e.target.closest("input"); if (!i) return;
+        sp.amt[i.dataset.k] = parseAmt(i.value) || 0; sp.custom = true; spSumText();
+      });
+      spSum.addEventListener("click", function (e) { if (e.target.closest("[data-equal]")) { sp.custom = false; spDrawRows(); } });
+      amt.addEventListener("input", spRefill);
+    }
     function drawAccts() {
       if (!S.accounts.length) {
         acct.innerHTML = '<span class="hint-line">Add an account in the Accounts section to choose where money goes in or out.</span>';
@@ -1396,7 +1506,7 @@ section.card { scroll-margin-top: 64px; }
       if (acctVal === toVal) toVal = "";
       drawAccts(); drawTo(); msg(out, "");
     });
-    function label() { return mode === "add" ? (type === "income" ? "Add income" : type === "transfer" ? "Add transfer" : "Add expense") : "Save changes"; }
+    function label() { return mode === "add" ? (type === "income" ? "Add income" : type === "transfer" ? "Add transfer" : sp && sp.on ? "Add split" : "Add expense") : "Save changes"; }
     function drawCats() {
       var list = catList(type);
       if (cat && list.indexOf(cat) < 0) list.push(cat);
@@ -1414,6 +1524,7 @@ section.card { scroll-margin-top: 64px; }
       cats.hidden = type === "transfer";
       if (methodField) methodField.hidden = type === "transfer";
       toField.hidden = type !== "transfer";
+      if (spField) spField.hidden = type !== "expense";
       if (type === "transfer" && !acctVal && S.accounts.length) acctVal = S.accounts[0].id;
       if (!save.disabled) save.textContent = label();
       drawCats(); drawAccts(); drawTo();
@@ -1456,10 +1567,24 @@ section.card { scroll-margin-top: 64px; }
           return { data: { type: "transfer", amount: a, category: "Transfer", method: "Transfer", note: note.value.trim().slice(0, 120), date: date.value, accountId: acctVal, toAccountId: toVal } };
         }
         if (!cat) return { error: "Pick a category." };
-        return { data: { type: type, amount: a, category: cat, method: method.value, note: note.value.trim().slice(0, 120), date: date.value, accountId: acctVal || null } };
+        var data = { type: type, amount: a, category: cat, method: method.value, note: note.value.trim().slice(0, 120), date: date.value, accountId: acctVal || null };
+        if (sp && sp.on && type === "expense") {
+          if (!sp.people.length) return { error: "Add at least one other person to split with, or tap Splitting to stop." };
+          var keys = spKeys(), sum = 0;
+          for (var i = 0; i < keys.length; i++) {
+            var v = sp.amt[keys[i]] || 0;
+            if (!(v > 0)) return { error: "Enter a share for " + spLabel(keys[i]) + ", or tap their name to take them out." };
+            sum += v;
+          }
+          if (Math.abs(round2(a - sum)) >= 0.005) return { error: "The shares add up to " + inr(round2(sum)) + " but the bill is " + inr(a) + "." };
+          if (S.loanPay === false) return { error: "Splitting needs a small database update first." };
+          data.split = { total: a, mine: sp.me ? round2(sp.amt.__me) : 0, others: sp.people.map(function (n) { return { name: n, amount: round2(sp.amt[loanKey(n)]) }; }) };
+          data.amount = data.split.mine;
+        }
+        return { data: data };
       },
       load: function (t) { cat = t.type === "transfer" ? null : t.category; toVal = t.toAccountId || ""; acctVal = t.accountId || ""; setType(t.type); amt.value = String(t.amount); date.value = t.date; note.value = t.note; if (t.type !== "transfer") setMethod(t.method); refreshAccounts(t.accountId || ""); },
-      reset: function () { amt.value = ""; note.value = ""; cat = null; drawCats(); msg(out, ""); }
+      reset: function () { amt.value = ""; note.value = ""; cat = null; drawCats(); spReset(); save.textContent = label(); msg(out, ""); }
     };
   }
   $("add-slot").innerHTML = formHTML("add", "add");
@@ -1582,7 +1707,8 @@ section.card { scroll-margin-top: 64px; }
       sub = [t.note, (a ? acctLabel(a) : "Deleted account") + " → " + (b ? acctLabel(b) : "Deleted account")].filter(Boolean).join(" · ");
       amtHTML = '<span class="amt transfer">' + (af ? (t.toAccountId === af ? "+" : MINUS) : "⇄ ") + inr(t.amount) + "</span>";
     } else {
-      sub = [t.note, a && !af ? acctLabel(a) : "", t.method, t.recurringId ? "Monthly" : ""].filter(Boolean).join(" · ");
+      var sw = t.type === "expense" ? splitLoans(t.id).map(function (l) { return l.person; }) : [];
+      sub = [t.note, sw.length ? "Your share · split with " + sw.join(", ") : "", a && !af ? acctLabel(a) : "", t.method, t.recurringId ? "Monthly" : ""].filter(Boolean).join(" · ");
       amtHTML = '<span class="amt ' + t.type + '">' + (t.type === "income" ? "+" : MINUS) + inr(t.amount) + "</span>";
     }
     return '<button class="tx" type="button" data-id="' + esc(t.id) + '"><span class="tx-main"><span class="tx-cat">' + esc(cat) + "</span>" +
@@ -1710,19 +1836,51 @@ section.card { scroll-margin-top: 64px; }
   }
 
   /* ---------- Tracker actions ---------- */
+  /* A split bill: your share is an expense, each other share is money lent to that person,
+     all from the same account, so the account still drops by the full bill */
+  async function saveSplit(data) {
+    var sp = data.split, row = null, tx = Object.assign({}, data);
+    delete tx.split;
+    if (sp.mine > 0) { tx.amount = sp.mine; row = await saveTx(tx); }
+    var ways = sp.others.length + (sp.mine > 0 ? 1 : 0);
+    var note = ((data.note || data.category) + " · split " + ways + " ways of " + inr(sp.total)).slice(0, 200);
+    var rows = sp.others.map(function (o) {
+      var r = { direction: "lent", person: o.name, amount: o.amount, date: data.date, due_date: null, note: note, account_id: data.accountId || null };
+      if (row && S.loanTxn) r.txn_id = row.id;
+      return r;
+    });
+    try {
+      await write(async function () {
+        var res = await sb.from("loans").insert(rows).select(loanCols());
+        if (res.error) throw res.error;
+        (res.data || []).forEach(function (x) { upsertLocal(S.loans, cleanLoan(x)); });
+      });
+    } catch (err) {
+      var e2 = new Error((row ? "Your share was saved, but the others' shares weren't. " : "") + featureErr(err)); e2.friendly = true; throw e2;
+    } finally { renderLoans(); afterMoneyChange(); }
+  }
   addF.el.addEventListener("submit", async function (e) {
     e.preventDefault();
     var v = addF.values();
     if (v.error) { addF.showMsg(v.error, true); return; }
     addF.setBusy(true);
     try {
+      if (v.data.split) {
+        var spl = v.data.split;
+        await saveSplit(v.data);
+        store("ml-last-acct", v.data.accountId || "none");
+        addF.reset();
+        toast(spl.mine > 0 ? "Split " + inr(spl.total) + " · your share " + inr(spl.mine) + " · " + inr(round2(spl.total - spl.mine)) + " to get back"
+          : "Paid " + inr(spl.total) + " for " + spl.others.map(function (o) { return o.name; }).join(", ") + " · all to get back");
+        return;
+      }
       await saveTx(v.data);
       store("ml-last-acct", v.data.accountId || "none");
       addF.reset();
       var where = v.data.date.slice(0, 7) !== S.month ? " in " + ymLong(v.data.date.slice(0, 7)) : "";
       if (v.data.type === "transfer") toast("Moved " + inr(v.data.amount) + " \u00B7 " + acctLabel(acctById(v.data.accountId)) + " \u2192 " + acctLabel(acctById(v.data.toAccountId)) + where);
       else toast("Saved " + (v.data.type === "income" ? "+" : MINUS) + inr(v.data.amount) + " \u00B7 " + v.data.category + where);
-    } catch (err) { addF.showMsg(dataErr(err), true); }
+    } catch (err) { addF.showMsg(err && err.friendly ? err.message : dataErr(err), true); }
     finally { addF.setBusy(false); }
   });
   function openEdit(id) {
@@ -1732,6 +1890,9 @@ section.card { scroll-margin-top: 64px; }
     openSheet('<h3 class="sheet-title">Edit entry</h3>' + formHTML("ed", "edit"), "Edit entry");
     var ef = makeForm("ed", "edit");
     ef.load(t);
+    var linked = splitLoans(t.id), freeShares = linked.filter(function (l) { return !l.settled && !l.payments.length; });
+    if (linked.length) ef.el.querySelector(".actions").insertAdjacentHTML("beforebegin", '<p class="form-msg">' +
+      esc("Split bill: this is your share. " + linked.map(function (l) { return l.person + " " + inr(l.amount); }).join(", ") + " " + (linked.length === 1 ? "is" : "are") + " in Lend & borrow. Changing the amount here changes only your share.") + "</p>");
     ef.el.addEventListener("submit", async function (e) {
       e.preventDefault();
       var v = ef.values();
@@ -1743,12 +1904,21 @@ section.card { scroll-margin-top: 64px; }
     var del = $("ed-del"), armed = false, armT;
     del.addEventListener("click", async function () {
       if (!armed) {
-        armed = true; del.textContent = "Tap again to delete"; del.classList.add("armed");
+        armed = true; del.textContent = freeShares.length ? "Tap again · also removes " + freeShares.length + " share" + (freeShares.length > 1 ? "s" : "") : "Tap again to delete"; del.classList.add("armed");
         armT = setTimeout(function () { armed = false; del.textContent = "Delete"; del.classList.remove("armed"); }, 4000);
         return;
       }
       clearTimeout(armT); del.disabled = true;
-      try { await deleteTx(t.id); closeSheet(); toast("Entry deleted"); }
+      try {
+        await deleteTx(t.id);
+        if (freeShares.length) {
+          var ids = freeShares.map(function (l) { return l.id; });
+          await write(async function () { var r = await sb.from("loans").delete().in("id", ids); if (r.error) throw r.error; });
+          S.loans = S.loans.filter(function (l) { return ids.indexOf(l.id) < 0; });
+          renderLoans(); afterMoneyChange();
+        }
+        closeSheet(); toast(freeShares.length ? "Deleted the bill and its split shares" : "Entry deleted");
+      }
       catch (err) { ef.showMsg(dataErr(err), true); del.disabled = false; }
     });
     $("ed-cancel").addEventListener("click", closeSheet);
@@ -1927,7 +2097,7 @@ section.card { scroll-margin-top: 64px; }
   var REC_COLS = "id,type,name,amount,category,method,account_id,day_of_month,active,created_at",
       CB_COLS = "id,category,amount",
       LOAN_COLS_BASE = "id,direction,person,amount,date,due_date,note,account_id,settled,settled_on,created_at",
-      LOAN_COLS = LOAN_COLS_BASE + ",payments",
+      LOAN_COLS = LOAN_COLS_BASE + ",payments,txn_id",
       GOAL_COLS = "id,name,target,saved,target_date,created_at";
 
   /* Money moving: income +, spending -, transfers don't change the month's totals */
@@ -1973,15 +2143,18 @@ section.card { scroll-margin-top: 64px; }
     S.loans.forEach(function (l) { var k = loanKey(l.person); m[k] = nicerName(m[k], l.person); });
     return Object.keys(m).map(function (k) { return m[k]; }).sort(function (a, b) { return a.toLowerCase() < b.toLowerCase() ? -1 : 1; });
   }
-  function loanCols() { return S.loanPay === false ? LOAN_COLS_BASE : LOAN_COLS; }
+  function loanCols() { return S.loanColSet || LOAN_COLS; }
+  /* Newest columns first; fall back if the database update hasn't been run yet */
   async function fetchLoans() {
-    var r = await sb.from("loans").select(LOAN_COLS).order("date", { ascending: true });
-    if (r.error && /column|42703|payments/i.test(String(r.error.message || "") + String(r.error.code || ""))) {
-      S.loanPay = false;
-      r = await sb.from("loans").select(LOAN_COLS_BASE).order("date", { ascending: true });
-    } else if (!r.error) S.loanPay = true;
+    var tries = [LOAN_COLS, LOAN_COLS_BASE + ",payments", LOAN_COLS_BASE], r;
+    for (var i = 0; i < tries.length; i++) {
+      r = await sb.from("loans").select(tries[i]).order("date", { ascending: true });
+      if (!r.error) { S.loanColSet = tries[i]; S.loanPay = /payments/.test(tries[i]); S.loanTxn = /txn_id/.test(tries[i]); break; }
+      if (!/column|42703|payments|txn_id/i.test(String(r.error.message || "") + String(r.error.code || ""))) break;
+    }
     return r;
   }
+  function splitLoans(txnId) { return S.loans.filter(function (l) { return l.txnId === txnId; }); }
 
   function isoOrNull(v) { return typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null; }
   function cleanRec(r) {
@@ -1999,6 +2172,7 @@ section.card { scroll-margin-top: 64px; }
     return { id: String(r.id), direction: r.direction === "borrowed" ? "borrowed" : "lent", person: String(r.person || "Someone"), amount: a,
       date: isoOrNull(r.date), due: isoOrNull(r.due_date), note: String(r.note || ""), accountId: r.account_id ? String(r.account_id) : null,
       settled: !!r.settled, settledOn: isoOrNull(r.settled_on), createdAt: String(r.created_at || ""),
+      txnId: r.txn_id ? String(r.txn_id) : null,
       payments: Array.isArray(r.payments) ? r.payments.map(cleanPay).filter(Boolean).sort(function (x, y) { return x.date < y.date ? -1 : x.date > y.date ? 1 : 0; }) : [] };
   }
   function cleanPay(p) {
